@@ -11,7 +11,7 @@ import logging
 import time
 
 from app.models.database import engine, Base, get_db
-from app.routers import tallying, trustees, results, mock_data
+from app.routers import tallying, trustees, results, mock_data, ledger
 
 # Configure logging
 logging.basicConfig(
@@ -85,6 +85,7 @@ app.include_router(trustees.router, prefix="/api/trustees", tags=["Trustees"])
 app.include_router(tallying.router, prefix="/api/tally", tags=["Tallying"])
 app.include_router(results.router, prefix="/api/results", tags=["Results"])
 app.include_router(mock_data.router, prefix="/api/mock", tags=["Mock Data"])
+app.include_router(ledger.router, prefix="/api/ledger", tags=["Ledger"])
 
 
 # Root endpoint

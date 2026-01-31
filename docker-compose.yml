@@ -85,11 +85,13 @@ services:
     ports:
       - "8545:8545"
     command:
-      - --deterministic
-      - --accounts=10
-      - --networkId=1337
-      - --chainId=1337
-      - --mnemonic="test test test test test test test test test test test junk"
+      - "--server.host=0.0.0.0"
+      - "--server.port=8545"
+      # - "--wallet.deterministic=true"
+      - "--wallet.totalAccounts=10"
+      - "--chain.networkId=1337"
+      - "--chain.chainId=1337"
+      - "--wallet.mnemonic=test test test test test test test test test test test junk"
     networks:
       - evoting_network
 
@@ -100,7 +102,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@evoting.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
       - "5050:80"
     volumes:

@@ -103,6 +103,28 @@ async def generate_mock_votes(
                 is_tallied=False
             )
             db.add(vote)
+            
+            # EPIC 3: Ledger Hook
+            # Submit to ledger
+            try:
+                from app.services.ledger_service import ledger_service
+                ledger_service.submit_entry(
+                    db, 
+                    election_id=election.election_id,
+                    vote_id=None, # Vote ID not available until commit/refresh usually, or we assume sync? 
+                    # Actually keeping vote_id null as per request "vote_id nullable" or referenced.
+                    # Ideally we want the vote UUID. hash(nonce) is in encrypted_vote?
+                    # vote object doesn't have ID until flush?
+                    # The vote object has defaults in DB but not in python obj until flush?
+                    # Actually `vote_id` is a column default=uuid4, but sqlalchemy doesn't generate it python side unless specified.
+                    # We should generate vote_id in python to link it?
+                    # Existing code: `vote = EncryptedVote(...)`. It does NOT set vote_id. 
+                    # So Postgres generates it. We can't know it unless we flush.
+                    ciphertext=encrypted_vote
+                )
+            except Exception as e:
+                logger.error(f"Ledger submission failed: {e}")
+
             votes_generated += 1
             
             # Commit in batches for performance
