@@ -150,3 +150,112 @@
     padding: 1rem;
   }
 }
+
+/* Voter Access */
+.voter-access {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.project-box {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    max-width: 400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-group input {
+    padding: 0.8rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-group button {
+    padding: 0.8rem;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.dashboard-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #e9ecef;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.control-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    background: #f8f9fa;
+}
+
+.card h3 { 
+    margin-top: 0; 
+}
+
+.mfa-setup {
+    background: white;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px dashed #adb5bd;
+}
+
+.log-console {
+    background: #212529;
+    color: #00ff00;
+    font-family: monospace;
+    padding: 1rem;
+    border-radius: 8px;
+    height: 150px;
+    overflow-y: auto;
+}
+
+.log-console ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.credential-box {
+    margin-top: 1rem;
+    background: #fff3cd;
+    padding: 1rem;
+    border-radius: 4px;
+    border: 1px solid #ffeeba;
+}
+
+.credential-box textarea {
+    width: 100%;
+    height: 60px;
+    font-size: 0.8rem;
+}
+

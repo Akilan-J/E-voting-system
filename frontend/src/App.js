@@ -4,6 +4,7 @@ import ResultsDashboard from './components/ResultsDashboard';
 import TrusteePanel from './components/TrusteePanel';
 import TestingPanel from './components/TestingPanel';
 import LedgerExplorer from './components/LedgerExplorer';
+import VoterAccess from './components/VoterAccess';
 
 function App() {
   const [activeTab, setActiveTab] = useState('results');
@@ -37,6 +38,12 @@ function App() {
           📊 Results
         </button>
         <button
+          className={activeTab === 'voter' ? 'active' : ''}
+          onClick={() => setActiveTab('voter')}
+        >
+          👤 Voter Access
+        </button>
+        <button
           className={activeTab === 'trustees' ? 'active' : ''}
           onClick={() => setActiveTab('trustees')}
         >
@@ -58,6 +65,7 @@ function App() {
 
       <main className="App-main">
         {activeTab === 'results' && <ResultsDashboard />}
+        {activeTab === 'voter' && <VoterAccess />}
         {activeTab === 'trustees' && <TrusteePanel />}
         {activeTab === 'ledger' && <LedgerExplorer />}
         {activeTab === 'testing' && <TestingPanel />}
