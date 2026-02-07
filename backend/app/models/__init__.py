@@ -13,6 +13,15 @@ from app.models.database import (
     VerificationProof,
     TallyingSession
 )
+from app.models.ledger_models import (
+    LedgerNode,
+    LedgerBlock,
+    LedgerEntry,
+    LedgerApproval,
+    LedgerSnapshot,
+    LedgerEvent,
+    LedgerPruning
+)
 
 __all__ = [
     "Base",
@@ -26,5 +35,12 @@ __all__ = [
     "ElectionResult",
     "AuditLog",
     "VerificationProof",
-    "TallyingSession"
+    "TallyingSession",
+    "LedgerNode",
+    "LedgerBlock",
+    "LedgerEntry",
+    "LedgerApproval",
+    "LedgerSnapshot",
+    "LedgerEvent",
+    "LedgerPruning"
 ]

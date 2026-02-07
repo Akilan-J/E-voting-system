@@ -9,9 +9,14 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 import time
+# Monkeypatch time.clock for passlib compatibility on Python 3.8+
+if not hasattr(time, 'clock'):
+    time.clock = time.time
+
 
 from app.models.database import engine, Base, get_db
-from app.routers import tallying, trustees, results, mock_data
+from app.models import auth_models
+from app.routers import tallying, trustees, results, mock_data, ledger, auth, voter
 
 # Configure logging
 logging.basicConfig(
@@ -85,6 +90,9 @@ app.include_router(trustees.router, prefix="/api/trustees", tags=["Trustees"])
 app.include_router(tallying.router, prefix="/api/tally", tags=["Tallying"])
 app.include_router(results.router, prefix="/api/results", tags=["Results"])
 app.include_router(mock_data.router, prefix="/api/mock", tags=["Mock Data"])
+app.include_router(ledger.router, prefix="/api/ledger", tags=["Ledger"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(voter.router, prefix="/api/voter", tags=["Voter"])
 
 
 # Root endpoint
