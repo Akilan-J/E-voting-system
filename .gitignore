@@ -1,3 +1,6 @@
+# OpenProject docs (internal only)
+docs/openproject_*.md
+
 # Node.js / Frontend
 node_modules/
 npm-debug.log*
