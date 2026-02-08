@@ -140,6 +140,10 @@ class AuditLog(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     ip_address = Column(String(45))
     user_agent = Column(Text)
+    
+    # Validation & Inmutability
+    previous_hash = Column(String(64), nullable=True) # SHA256 of previous log
+    current_hash = Column(String(64), unique=True, nullable=True) # SHA256 of this log
 
     election = relationship("Election", back_populates="audit_logs")
 

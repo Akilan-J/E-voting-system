@@ -45,6 +45,16 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
             detail="Citizen exists but is not eligible to vote (Inactive or Deceased)"
         )
 
+    # 1.5 Risk Analysis
+    from app.core.security_core import SecurityRiskAnalyzer, RiskLevel, ImmutableLogger
+    client_ip = "127.0.0.1" # In prod: request.client.host
+    # No user_id yet if login fails, but we use identity_hash?
+    # Or just track IP risk.
+    risk = SecurityRiskAnalyzer.calculate_risk(client_ip, "unknown", db)
+    if risk in [RiskLevel.HIGH, RiskLevel.CRITICAL]:
+         ImmutableLogger.log(db, None, "LOGIN_BLOCKED", "SYSTEM", {"risk": risk.value, "ip": client_ip}, "BLOCKED", client_ip)
+         raise HTTPException(status_code=403, detail="Login blocked due to high risk assessment")
+
     # 2. Check if local user account exists, if not create it from Citizen data
     user = db.query(User).filter(User.identity_hash == identity_hash).first()
 
