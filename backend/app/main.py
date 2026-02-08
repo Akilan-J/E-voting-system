@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 import time
+from datetime import datetime, timedelta
 # Monkeypatch time.clock for passlib compatibility on Python 3.8+
 if not hasattr(time, 'clock'):
     time.clock = time.time
@@ -26,17 +27,68 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Create tables (if not exists) at module level to avoid async issues
+logger.info("📊 Initializing database tables...")
+Base.metadata.create_all(bind=engine)
+
+def init_demo_data():
+    """Sync initialization of demo data"""
+    db = next(get_db())
+    try:
+        from app.models.database import Election
+        from app.models.auth_models import Citizen
+        import uuid
+        import hashlib
+        
+        # 1. Ensure Demo Election exists
+        demo_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        election = db.query(Election).filter(Election.election_id == demo_id).first()
+        if not election:
+            logger.info("Creating demo election...")
+            now = datetime.utcnow()
+            election = Election(
+            election_id=demo_id,
+            title="National General Election 2026",
+             description="Secure, multi-trustee e-voting demonstration",
+            candidates=[
+        {"id": 1, "name": "Alice Johnson", "party": "Progressive"},
+        {"id": 2, "name": "Bob Smith", "party": "Conservative"},
+        {"id": 3, "name": "Charlie Davis", "party": "Independent"}
+    ],
+    start_time=now,
+    end_time=now + timedelta(days=1),
+    status="active"
+)
+
+            db.add(election)
+            db.commit()
+
+        # 2. Ensure Demo Citizens exist (Aadhaar Sim)
+        test_credentials = ["123456789012", "987654321098", "555566667777"]
+        for cred in test_credentials:
+            ident_hash = hashlib.sha256(cred.encode()).hexdigest()
+            if not db.query(Citizen).filter(Citizen.identity_hash == ident_hash).first():
+                db.add(Citizen(
+                    identity_hash=ident_hash,
+                    full_name_hashed=hashlib.sha256(f"Citizen {cred}".encode()).hexdigest(),
+                    is_eligible_voter=True
+                ))
+        db.commit()
+        logger.info("✅ Database initialized with demo data")
+    except Exception as e:
+        logger.error(f"Failed to initialize demo data: {e}")
+    finally:
+        db.close()
+
+# Run demo data init
+init_demo_data()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("🚀 Starting E-Voting System - EPIC 4")
-    logger.info("📊 Initializing database tables...")
-    
-    # Create tables (if not exists)
-    Base.metadata.create_all(bind=engine)
-    
-    logger.info("✅ Database initialized")
     logger.info("🔐 Cryptography services ready")
     
     yield
@@ -108,9 +160,11 @@ async def root():
     }
 
 
+
+
 # Health check endpoint
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint for Docker"""
     try:
         # Test database connection

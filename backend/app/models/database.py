@@ -7,6 +7,11 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
+from datetime import datetime, timedelta
+
+start_time = datetime.utcnow()
+end_time = start_time + timedelta(days=1)
+
 import os
 import uuid
 
@@ -15,7 +20,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     f"postgresql://{os.getenv('POSTGRES_USER', 'admin')}:"
     f"{os.getenv('POSTGRES_PASSWORD', 'secure_password')}@"
-    f"{os.getenv('POSTGRES_HOST', 'postgres')}:"
+    f"{os.getenv('POSTGRES_HOST', 'localhost')}:"
     f"{os.getenv('POSTGRES_PORT', '5432')}/"
     f"{os.getenv('POSTGRES_DB', 'evoting')}"
 )

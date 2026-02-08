@@ -26,7 +26,7 @@ class TallyingService:
         self.encryption = encryption_service
         self.threshold_crypto = threshold_crypto_service
     
-    async def start_tallying(
+    def start_tallying(
         self,
         db: Session,
         election_id: str
@@ -122,7 +122,7 @@ class TallyingService:
             "required_trustees": session.required_trustees
         }
     
-    async def partial_decrypt(
+    def partial_decrypt(
         self,
         db: Session,
         election_id: str,
@@ -231,7 +231,7 @@ class TallyingService:
             "can_finalize": session.completed_trustees >= session.required_trustees
         }
     
-    async def finalize_tally(
+    def finalize_tally(
         self,
         db: Session,
         election_id: str

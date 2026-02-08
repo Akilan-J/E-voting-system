@@ -22,6 +22,13 @@ from app.models.ledger_models import (
     LedgerEvent,
     LedgerPruning
 )
+from app.models.auth_models import (
+    User,
+    SecurityLog,
+    EligibilityRecord,
+    BlindToken,
+    Citizen
+)
 
 __all__ = [
     "Base",
@@ -42,5 +49,10 @@ __all__ = [
     "LedgerApproval",
     "LedgerSnapshot",
     "LedgerEvent",
-    "LedgerPruning"
+    "LedgerPruning",
+    "User",
+    "SecurityLog",
+    "EligibilityRecord",
+    "BlindToken",
+    "Citizen"
 ]

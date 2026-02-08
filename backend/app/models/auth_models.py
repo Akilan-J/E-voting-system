@@ -65,3 +65,16 @@ class BlindToken(Base):
     used_at = Column(DateTime, nullable=True)
     election_id = Column(UUID(as_uuid=True), nullable=False)
 
+class Citizen(Base):
+    """
+    Simulated Source of Truth (e.g. Aadhaar Database)
+    """
+    __tablename__ = "citizens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    identity_hash = Column(String(255), unique=True, index=True, nullable=False)
+    full_name_hashed = Column(String(255))
+    is_eligible_voter = Column(Boolean, default=True)
+    is_deceased = Column(Boolean, default=False)
+    registration_date = Column(DateTime, default=datetime.utcnow)
+
