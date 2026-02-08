@@ -15,6 +15,22 @@ from app.models.database import (
     TallyingSession,
     Incident
 )
+from app.models.ledger_models import (
+    LedgerNode,
+    LedgerBlock,
+    LedgerEntry,
+    LedgerApproval,
+    LedgerSnapshot,
+    LedgerEvent,
+    LedgerPruning
+)
+from app.models.auth_models import (
+    User,
+    SecurityLog,
+    EligibilityRecord,
+    BlindToken,
+    Citizen
+)
 
 __all__ = [
     "Base",
@@ -29,5 +45,17 @@ __all__ = [
     "AuditLog",
     "VerificationProof",
     "TallyingSession",
-    "Incident"
+    "Incident",
+    "LedgerNode",
+    "LedgerBlock",
+    "LedgerEntry",
+    "LedgerApproval",
+    "LedgerSnapshot",
+    "LedgerEvent",
+    "LedgerPruning",
+    "User",
+    "SecurityLog",
+    "EligibilityRecord",
+    "BlindToken",
+    "Citizen"
 ]

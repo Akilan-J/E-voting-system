@@ -7,7 +7,8 @@ import TestingPanel from './components/TestingPanel';
 import OpsDashboard from './components/OpsDashboard';
 import VerificationPortal from './components/VerificationPortal';
 import SecurityLab from './components/SecurityLab';
-
+import LedgerExplorer from './components/LedgerExplorer';
+import VoterAccess from './components/VoterAccess';
 
 function App() {
   const [activeTab, setActiveTab] = useState('results');
@@ -41,12 +42,24 @@ function App() {
           📊 Results
         </button>
         <button
+          className={activeTab === 'voter' ? 'active' : ''}
+          onClick={() => setActiveTab('voter')}
+        >
+          👤 Voter Access
+        </button>
+        <button
           className={activeTab === 'trustees' ? 'active' : ''}
           onClick={() => setActiveTab('trustees')}
         >
           🔐 Trustees
         </button>
 
+        <button
+          className={activeTab === 'ledger' ? 'active' : ''}
+          onClick={() => setActiveTab('ledger')}
+        >
+          🔗 Ledger
+        </button>
         <button
           className={activeTab === 'testing' ? 'active' : ''}
           onClick={() => setActiveTab('testing')}
@@ -75,7 +88,9 @@ function App() {
 
       <main className="App-main">
         {activeTab === 'results' && <ResultsDashboard />}
+        {activeTab === 'voter' && <VoterAccess />}
         {activeTab === 'trustees' && <TrusteePanel />}
+        {activeTab === 'ledger' && <LedgerExplorer />}
         {activeTab === 'testing' && <TestingPanel />}
         {activeTab === 'ops' && <OpsDashboard />}
         {activeTab === 'verification' && <VerificationPortal />}
@@ -84,7 +99,6 @@ function App() {
 
       <footer className="App-footer">
         <p>EPIC 4: Privacy-Preserving Tallying & Result Verification</p>
-
         <p>Threshold: 3-of-5 Trustees | Homomorphic Encryption Enabled</p>
       </footer>
     </div>

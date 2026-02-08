@@ -20,6 +20,20 @@ services:
     networks:
       - evoting_network
 
+  # Redis - Cache & Session Store
+  redis:
+    image: redis:7-alpine
+    container_name: evoting_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - evoting_network
+
   # FastAPI Backend
   backend:
     build:
@@ -48,7 +62,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import http.client; c=http.client.HTTPConnection('localhost',8000); c.request('GET','/health'); exit(0 if c.getresponse().status==200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,11 +99,13 @@ services:
     ports:
       - "8545:8545"
     command:
-      - --deterministic
-      - --accounts=10
-      - --networkId=1337
-      - --chainId=1337
-      - --mnemonic="test test test test test test test test test test test junk"
+      - "--server.host=0.0.0.0"
+      - "--server.port=8545"
+      # - "--wallet.deterministic=true"
+      - "--wallet.totalAccounts=10"
+      - "--chain.networkId=1337"
+      - "--chain.chainId=1337"
+      - "--wallet.mnemonic=test test test test test test test test test test test junk"
     networks:
       - evoting_network
 
@@ -100,7 +116,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@evoting.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
       - "5050:80"
     volumes:

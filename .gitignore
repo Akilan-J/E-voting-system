@@ -1,3 +1,6 @@
+# OpenProject docs (internal only)
+docs/openproject_*.md
+
 # Node.js / Frontend
 node_modules/
 npm-debug.log*
@@ -98,3 +101,27 @@ Thumbs.db
 
 # Blockchain / Ganache
 /ganache_data/
+# Epic 4 specific
+/epic4/*.tmp
+/epic4/__pycache__/
+
+# Test reports
+test-results/
+junit.xml
+test-output/
+
+# Local development
+*.local
+.env.development
+.env.production
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# Artifacts (but keep structure)
+/artifacts/*.json
+!/artifacts/.gitkeep
+
+# Dependencies cache
+.deps/

@@ -197,7 +197,6 @@ class ErrorResponse(BaseModel):
 
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-
 # Incident Schemas (US-70)
 class IncidentCreate(BaseModel):
     title: str
@@ -283,3 +282,26 @@ class LedgerReplayResponse(BaseModel):
     status: str  # clean, corrupted
     discrepancies: List[Dict[str, Any]]
 
+
+# Anonymous Voting Schemas
+
+class EligibilityResponse(BaseModel):
+    is_eligible: bool
+    reason_code: Optional[str] = None
+    election_id: UUID
+
+
+class BlindSignRequest(BaseModel):
+    election_id: UUID
+    blinded_payload: str
+
+
+class BlindSignResponse(BaseModel):
+    signature: str
+
+
+class CastVoteRequest(BaseModel):
+    election_id: UUID
+    encrypted_vote: str
+    token: str
+    signature: str

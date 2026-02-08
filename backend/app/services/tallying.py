@@ -1,5 +1,18 @@
 """
-Tallying Service - Core business logic for vote tallying
+Tallying Service for Epic 4: Privacy-Preserving Vote Counting
+
+This is the main workflow coordinator. It orchestrates:
+1. Vote aggregation using homomorphic encryption
+2. Partial decryption by trustees
+3. Final result computation
+4. Result publication to blockchain
+
+The tallying process:
+- Start: Collect all encrypted votes and aggregate them
+- Decrypt: Each trustee provides a partial decryption
+- Finalize: Combine partials to get final vote counts
+
+Author: Kapil (Epic 4)
 """
 
 import logging
@@ -20,13 +33,18 @@ logger = logging.getLogger(__name__)
 
 
 class TallyingService:
-    """Service for managing the tallying process"""
+    """
+    Coordinates the entire tallying workflow.
+    
+    Manages the election lifecycle from vote collection
+    through to publishing verified results on blockchain.
+    """
     
     def __init__(self):
         self.encryption = encryption_service
         self.threshold_crypto = threshold_crypto_service
     
-    async def start_tallying(
+    def start_tallying(
         self,
         db: Session,
         election_id: str
@@ -134,7 +152,7 @@ class TallyingService:
             "required_trustees": session.required_trustees
         }
     
-    async def partial_decrypt(
+    def partial_decrypt(
         self,
         db: Session,
         election_id: str,
@@ -243,7 +261,7 @@ class TallyingService:
             "can_finalize": session.completed_trustees >= session.required_trustees
         }
     
-    async def finalize_tally(
+    def finalize_tally(
         self,
         db: Session,
         election_id: str
@@ -387,12 +405,11 @@ class TallyingService:
         final_tally: Dict,
         total_votes: int
     ) -> str:
-        """Generate verification hash for results"""
+        """Generate verification hash for results (deterministic - no timestamp)"""
         hash_data = {
             "election_id": str(election_id),
             "final_tally": final_tally,
-            "total_votes": total_votes,
-            "timestamp": datetime.utcnow().isoformat()
+            "total_votes": total_votes
         }
         hash_str = json.dumps(hash_data, sort_keys=True)
         verification_hash = hashlib.sha256(hash_str.encode()).hexdigest()

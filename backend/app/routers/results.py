@@ -1,5 +1,17 @@
 """
-Results Router - API endpoints for result publishing and verification
+Results Router for Epic 4
+
+Handles the final stage: publishing and verifying results.
+Endpoints for retrieving results, exporting data, and
+verifying the cryptographic proofs.
+
+Results include:
+- Vote counts per candidate
+- Merkle proof of ballot integrity
+- Blockchain transaction hash
+- Zero-knowledge decryption proofs
+
+Author: Kapil (Epic 4)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,7 +23,7 @@ import logging
 import hashlib
 import json
 
-from app.models import get_db, ElectionResult, Election, AuditLog
+from app.models.database import get_db, ElectionResult, Election, AuditLog
 from app.models.schemas import (
     ElectionResultResponse,
     ResultVerificationRequest,
@@ -24,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=List[ElectionResultResponse])
-async def get_all_results(
+def get_all_results(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -53,7 +65,7 @@ async def get_all_results(
 
 
 @router.get("/{election_id}", response_model=ElectionResultResponse)
-async def get_result(
+def get_result(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -85,7 +97,7 @@ async def get_result(
 
 
 @router.post("/verify", response_model=ResultVerificationResponse)
-async def verify_results(
+def verify_results(
     request: ResultVerificationRequest,
     db: Session = Depends(get_db)
 ):
@@ -111,12 +123,11 @@ async def verify_results(
             detail="Results not found"
         )
     
-    # Recompute verification hash
+    # Recompute verification hash (deterministic - no timestamp)
     hash_data = {
         "election_id": str(result.election_id),
         "final_tally": result.final_tally,
-        "total_votes": result.total_votes_tallied,
-        "timestamp": result.created_at.isoformat()
+        "total_votes": result.total_votes_tallied
     }
     hash_str = json.dumps(hash_data, sort_keys=True)
     computed_hash = hashlib.sha256(hash_str.encode()).hexdigest()
@@ -146,7 +157,7 @@ async def verify_results(
 
 
 @router.get("/audit-log/{election_id}", response_model=List[AuditLogResponse])
-async def get_audit_log(
+def get_audit_log(
     election_id: UUID,
     skip: int = 0,
     limit: int = 100,
@@ -170,7 +181,7 @@ async def get_audit_log(
             log_id=log.log_id,
             operation_type=log.operation_type,
             performed_by=log.performed_by,
-            details=log.details,
+            details=json.loads(log.details) if isinstance(log.details, str) else log.details,
             status=log.status,
             timestamp=log.timestamp
         )
@@ -179,7 +190,7 @@ async def get_audit_log(
 
 
 @router.post("/publish/{election_id}")
-async def publish_to_blockchain(
+def publish_to_blockchain(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -210,12 +221,45 @@ async def publish_to_blockchain(
         )
     
     try:
+        # Import ledger service
+        from app.services.ledger_service import ledger_service
+        
         # In production, this would interact with actual blockchain
         # For now, we'll simulate it
         
         # Generate simulated transaction hash
         tx_data = f"{election_id}-{result.verification_hash}-{datetime.utcnow().isoformat()}"
         tx_hash = "0x" + hashlib.sha256(tx_data.encode()).hexdigest()
+        
+        # Create genesis block if needed
+        try:
+            chain_status = ledger_service.verify_chain(db, election_id)
+            if not chain_status.get("valid"):
+                logger.info("Creating genesis block for ledger...")
+                ledger_service.create_genesis(db, election_id)
+        except Exception as e:
+            logger.warning(f"Genesis check/creation: {e}")
+        
+        # Submit result entry to ledger
+        try:
+            result_data = json.dumps({
+                "type": "election_result",
+                "election_id": str(election_id),
+                "final_tally": result.final_tally,
+                "total_votes": result.total_votes_tallied,
+                "verification_hash": result.verification_hash,
+                "tx_hash": tx_hash
+            })
+            ledger_service.submit_entry(db, election_id, None, result_data)
+            
+            # Propose and finalize the block
+            block = ledger_service.propose_block(db, election_id)
+            if block:
+                ledger_service.approve_block(db, election_id, block.height)
+                ledger_service.finalize_block(db, election_id, block.height)
+                logger.info(f"Created ledger block at height {block.height}")
+        except Exception as e:
+            logger.warning(f"Ledger block creation: {e}")
         
         # Update result with blockchain info
         result.blockchain_tx_hash = tx_hash
@@ -256,7 +300,7 @@ async def publish_to_blockchain(
 
 
 @router.get("/summary/{election_id}")
-async def get_result_summary(
+def get_result_summary(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -265,7 +309,7 @@ async def get_result_summary(
     
     - **election_id**: UUID of the election
     """
-    from app.models import PartialDecryption, TallyingSession
+    from app.models.database import PartialDecryption, TallyingSession
     
     result = db.query(ElectionResult).filter(
         ElectionResult.election_id == election_id

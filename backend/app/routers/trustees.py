@@ -1,5 +1,14 @@
 """
-Trustees Router - API endpoints for trustee management
+Trustees Router for Epic 4
+
+Manages the 5 trustees who hold decryption key shares.
+Endpoints for registering trustees, generating key shares,
+and checking trustee status.
+
+Trustees are the guardians of election integrity - no single
+trustee can decrypt results alone, but any 3 can together.
+
+Author: Kapil (Epic 4)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,7 +17,7 @@ from typing import List
 from uuid import UUID
 import logging
 
-from app.models import get_db, Trustee
+from app.models.database import get_db, Trustee
 from app.models.schemas import (
     TrusteeCreate,
     TrusteeResponse,
@@ -23,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=TrusteeResponse, status_code=status.HTTP_201_CREATED)
-async def register_trustee(
+def register_trustee(
     trustee: TrusteeCreate,
     db: Session = Depends(get_db)
 ):
@@ -68,7 +77,7 @@ async def register_trustee(
 
 
 @router.get("", response_model=List[TrusteeResponse])
-async def list_trustees(
+def list_trustees(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -96,7 +105,7 @@ async def list_trustees(
 
 
 @router.get("/{trustee_id}", response_model=TrusteeResponse)
-async def get_trustee(
+def get_trustee(
     trustee_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -125,7 +134,7 @@ async def get_trustee(
 
 
 @router.post("/{trustee_id}/key-share", response_model=KeyShareGenerateResponse)
-async def generate_key_share(
+def generate_key_share(
     trustee_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -187,7 +196,7 @@ async def generate_key_share(
 
 
 @router.delete("/{trustee_id}", response_model=SuccessResponse)
-async def delete_trustee(
+def delete_trustee(
     trustee_id: UUID,
     db: Session = Depends(get_db)
 ):

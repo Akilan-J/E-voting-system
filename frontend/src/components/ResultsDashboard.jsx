@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { resultsAPI, mockDataAPI } from '../services/api';
 import './ResultsDashboard.css';
@@ -8,10 +7,7 @@ function ResultsDashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Modal State
-  const [showModal, setShowModal] = useState(false);
-  const [modalContent, setModalContent] = useState({ title: '', message: '', type: 'info' });
+  const [verificationStatus, setVerificationStatus] = useState(null);
 
   useEffect(() => {
     loadResults();
@@ -22,16 +18,22 @@ function ResultsDashboard() {
     setError(null);
     try {
       const stats = await mockDataAPI.getElectionStats();
-      const electionId = stats.data.election.id;
+      const electionId = stats.data.election?.id;
+      
+      if (!electionId) {
+        setError('No election found. Start by creating votes in the Testing tab.');
+        setLoading(false);
+        return;
+      }
 
       try {
         const resultData = await resultsAPI.getByElectionId(electionId);
         setResults(resultData.data);
-
+        
         const summaryData = await resultsAPI.getSummary(electionId);
         setSummary(summaryData.data);
       } catch (err) {
-        setError('No results yet. Please run tallying process.');
+        setError('No results yet. Complete the tallying workflow in the Testing tab.');
       }
     } catch (err) {
       setError('Failed to load election data');
@@ -40,118 +42,220 @@ function ResultsDashboard() {
   };
 
   const verifyResults = async () => {
-    if (!results) return;
+    if (!results?.election_id) return;
+    
+    setVerificationStatus({ loading: true });
     try {
       const verification = await resultsAPI.verify(results.election_id);
-      setModalContent({
-        title: verification.data.is_valid ? '✅ Verification Successful' : '❌ Verification Failed',
-        message: verification.data.is_valid
-          ? 'The election results have been cryptographically verified against the ledger. The proof is valid.'
-          : 'The election results could not be verified. Mismatch detected.',
-        type: verification.data.is_valid ? 'success' : 'error'
+      setVerificationStatus({
+        loading: false,
+        valid: verification.data.is_valid,
+        message: verification.data.message || (verification.data.is_valid ? 'Results verified successfully' : 'Verification failed')
       });
-      setShowModal(true);
     } catch (err) {
-      setModalContent({
-        title: '⚠️ Verification Error',
-        message: 'Failed to verify results: ' + err.message,
-        type: 'error'
+      setVerificationStatus({
+        loading: false,
+        valid: false,
+        message: err.response?.data?.detail || 'Verification failed'
       });
-      setShowModal(true);
     }
   };
 
-  const closeModal = () => {
-    setShowModal(false);
+  // Calculate winner from tally
+  const getWinner = () => {
+    if (!summary?.results?.tally) return null;
+    const entries = Object.entries(summary.results.tally);
+    if (entries.length === 0) return null;
+    return entries.reduce((max, curr) => curr[1].votes > max[1].votes ? curr : max);
   };
 
-  if (loading) return <div className="loading"><div className="spinner"></div>Loading results...</div>;
-  if (error) return <div className="error-message">{error}</div>;
-  if (!results) return (
-    <div className="empty-state">
-      <div className="empty-icon">📊</div>
-      <h3>No results available yet</h3>
-      <p>Start by going to the Testing tab and running the workflow</p>
-    </div>
-  );
+  const winner = getWinner();
+
+  if (loading) {
+    return (
+      <div className="results-dashboard">
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading results...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="results-dashboard">
+        <div className="empty-state">
+          <div className="empty-icon">📊</div>
+          <h3>No Results Available</h3>
+          <p>{error}</p>
+          <button className="btn btn-primary" onClick={loadResults}>
+            🔄 Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="results-dashboard">
+      {/* Header */}
       <div className="dashboard-header">
-        <h2>📊 Election Results</h2>
-        {summary && (
-          <div className="election-info">
-            <div>
-              <h3 className="election-title">{summary.election?.title || 'Unknown Election'}</h3>
-              <span className={`status-badge status-${summary.election?.status || 'pending'}`}>
-                {summary.election?.status || 'Pending'}
-              </span>
-            </div>
-            <div className="vote-count">
-              <span className="count-label">Total Votes</span>
-              <span className="count-value">{summary.results?.total_votes || 0}</span>
-            </div>
+        <div className="header-left">
+          <h2>📊 Election Results</h2>
+          <p>{summary?.election?.title || 'Presidential Election 2026'}</p>
+        </div>
+        <div className="header-right">
+          <span className={`status-pill status-${summary?.election?.status || 'pending'}`}>
+            {summary?.election?.status || 'Pending'}
+          </span>
+          <button className="btn btn-icon" onClick={loadResults} title="Refresh">
+            🔄
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-icon">🗳️</div>
+          <div className="stat-content">
+            <span className="stat-value">{summary?.results?.total_votes || 0}</span>
+            <span className="stat-label">Total Votes</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">👥</div>
+          <div className="stat-content">
+            <span className="stat-value">{Object.keys(summary?.results?.tally || {}).length}</span>
+            <span className="stat-label">Candidates</span>
+          </div>
+        </div>
+        <div className="stat-card highlight">
+          <div className="stat-icon">🏆</div>
+          <div className="stat-content">
+            <span className="stat-value">{winner ? winner[0] : '-'}</span>
+            <span className="stat-label">Winner</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Vote Distribution */}
+      <div className="section-card">
+        <h3>🗳️ Vote Distribution</h3>
+        <div className="candidates-grid">
+          {summary && Object.entries(summary.results?.tally || {}).map(([candidate, data], index) => {
+            const isWinner = winner && winner[0] === candidate;
+            const colors = ['#667eea', '#48bb78', '#ed8936', '#9f7aea', '#38b2ac'];
+            const color = colors[index % colors.length];
+            
+            return (
+              <div key={candidate} className={`candidate-card ${isWinner ? 'winner' : ''}`}>
+                {isWinner && <div className="winner-badge">🏆 Winner</div>}
+                <div className="candidate-header">
+                  <div className="candidate-avatar" style={{ background: color }}>
+                    {candidate.charAt(0)}
+                  </div>
+                  <div className="candidate-info">
+                    <h4>{candidate}</h4>
+                    <span className="vote-count">{data.votes} votes</span>
+                  </div>
+                  <div className="percentage-badge" style={{ background: color }}>
+                    {data.percentage}%
+                  </div>
+                </div>
+                <div className="vote-bar">
+                  <div 
+                    className="vote-bar-fill" 
+                    style={{ 
+                      width: `${data.percentage}%`,
+                      background: `linear-gradient(90deg, ${color}, ${color}dd)`
+                    }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Verification Section */}
+      <div className="section-card verification-section">
+        <h3>🔐 Cryptographic Verification</h3>
+        
+        <div className="verification-grid">
+          <div className="verification-item">
+            <span className="ver-label">Verification Hash</span>
+            <code className="ver-value hash">
+              {results?.verification_hash || 'Not computed'}
+            </code>
+          </div>
+          
+          <div className="verification-item">
+            <span className="ver-label">Election ID</span>
+            <code className="ver-value">
+              {results?.election_id?.substring(0, 16)}...
+            </code>
+          </div>
+          
+          {summary?.blockchain?.published && (
+            <>
+              <div className="verification-item">
+                <span className="ver-label">Blockchain TX</span>
+                <code className="ver-value hash">
+                  {summary.blockchain.tx_hash?.substring(0, 32)}...
+                </code>
+              </div>
+              <div className="verification-item">
+                <span className="ver-label">Block Number</span>
+                <code className="ver-value">
+                  {summary.blockchain.block_number || 'N/A'}
+                </code>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Verification Status */}
+        {verificationStatus && !verificationStatus.loading && (
+          <div className={`verification-result ${verificationStatus.valid ? 'valid' : 'invalid'}`}>
+            <span className="ver-icon">{verificationStatus.valid ? '✅' : '❌'}</span>
+            <span className="ver-message">{verificationStatus.message}</span>
           </div>
         )}
+
+        <div className="verification-actions">
+          <button 
+            className="btn btn-primary" 
+            onClick={verifyResults}
+            disabled={verificationStatus?.loading}
+          >
+            {verificationStatus?.loading ? '⏳ Verifying...' : '🔍 Verify Results'}
+          </button>
+        </div>
       </div>
 
-      <div className="results-content">
-        <h3 className="section-title">🏆 Vote Distribution</h3>
-        <div className="candidates-list">
-          {summary && Object.entries(summary.results?.tally || {}).map(([candidate, data]) => (
-            <div key={candidate} className="candidate-card">
-              <div className="candidate-info">
-                <span className="candidate-name">{candidate}</span>
-                <span className="candidate-votes">{data.votes} votes ({data.percentage}%)</span>
-              </div>
-              <div className="vote-bar-container">
-                <div
-                  className="vote-bar-fill"
-                  style={{ width: `${data.percentage}%` }}
-                />
-              </div>
+      {/* Blockchain Status */}
+      {summary?.blockchain?.published ? (
+        <div className="section-card blockchain-section">
+          <h3>⛓️ Blockchain Record</h3>
+          <div className="blockchain-status published">
+            <div className="blockchain-icon">✅</div>
+            <div className="blockchain-info">
+              <h4>Results Published to Blockchain</h4>
+              <p>This election's results are immutably recorded on the ledger.</p>
+              <span className="tx-hash">TX: {summary.blockchain.tx_hash}</span>
             </div>
-          ))}
-        </div>
-
-        <div className="verification-section">
-          <h3 className="section-title">🔐 Verification Details</h3>
-          <div className="verification-grid">
-            <div className="verification-item">
-              <span className="label">Verification Hash</span>
-              <span className="value hash">{results.verification_hash?.substring(0, 32)}...</span>
-            </div>
-            <div className="verification-item">
-              <span className="label">Status</span>
-              <span className="value">{results.is_verified ? '✅ Verified' : '⏳ Pending'}</span>
-            </div>
-            {summary?.blockchain?.published && (
-              <div className="verification-item">
-                <span className="label">Blockchain TX</span>
-                <span className="value hash">{summary.blockchain.tx_hash?.substring(0, 32)}...</span>
-              </div>
-            )}
           </div>
         </div>
-
-        <div className="actions-section">
-          <button className="btn btn-primary" onClick={verifyResults}>
-            🔍 Verify Results
-          </button>
-          <button className="btn btn-secondary" onClick={loadResults}>
-            🔄 Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Verification Result Modal */}
-      {showModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>{modalContent.title}</h3>
-            <p>{modalContent.message}</p>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={closeModal}>Close</button>
+      ) : (
+        <div className="section-card blockchain-section">
+          <h3>⛓️ Blockchain Record</h3>
+          <div className="blockchain-status pending">
+            <div className="blockchain-icon">⏳</div>
+            <div className="blockchain-info">
+              <h4>Not Yet Published</h4>
+              <p>Results can be published to the blockchain after tallying is complete.</p>
             </div>
           </div>
         </div>

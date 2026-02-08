@@ -1,0 +1,32 @@
+"""US-33: Consensus Metrics Endpoint
+
+Add this to the end of ledger.py router
+"""
+
+@router.get("/consensus/metrics")
+@limiter.limit("60/minute")
+async def get_consensus_metrics(
+    request: Request,
+    election_id: Optional[uuid.UUID] = None,
+    db: Session = Depends(get_db)
+):
+    """US-33: Get consensus health metrics (BFT status, active nodes, pending blocks)"""
+    try:
+        # Simple metrics without complex methods
+        from datetime import timedelta
+        five_min_ago = datetime.utcnow() - timedelta(minutes=5)
+        
+        active_nodes = db.query(LedgerNode).filter(LedgerNode.last_seen >= five_min_ago).count()
+        pending_blocks = db.query(LedgerBlock).filter(LedgerBlock.committed == False).count()
+        latest_block = db.query(LedgerBlock).filter(LedgerBlock.committed == True).order_by(LedgerBlock.height.desc()).first()
+        
+        return {
+            "quorum_size": ledger_service.quorum,
+            "total_nodes": ledger_service.n,
+            "active_nodes": active_nodes,
+            "pending_blocks": pending_blocks,
+            "latest_height": latest_block.height if latest_block else -1,
+            "consensus_healthy": active_nodes >= ledger_service.quorum
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

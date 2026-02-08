@@ -1,13 +1,24 @@
 """
-Tallying Router - API endpoints for vote tallying operations
+Tallying Router for Epic 4
+
+API endpoints that handle the vote tallying workflow:
+- /start: Begins aggregation of encrypted votes
+- /partial-decrypt: Accepts trustee decryption contributions  
+- /finalize: Computes final results when enough trustees decrypt
+- /status: Shows current tallying progress
+
+All endpoints require a valid election ID and proper
+authorization (trustees only for decrypt operations).
+
+Author: Kapil (Epic 4)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 import logging
-
-from app.models import get_db, TallyingSession, Election
+from datetime import datetime
+from app.models.database import get_db, Election, EncryptedVote, PartialDecryption, TallyingSession
 from app.models.schemas import (
     TallyStartRequest,
     TallyStartResponse,
@@ -24,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/start", response_model=TallyStartResponse)
-async def start_tallying(
+def start_tallying(
     request: TallyStartRequest,
     db: Session = Depends(get_db)
 ):
@@ -42,7 +53,7 @@ async def start_tallying(
     logger.info(f"Received tally start request for election: {request.election_id}")
     
     try:
-        result = await tallying_service.start_tallying(
+        result = tallying_service.start_tallying(
             db=db,
             election_id=str(request.election_id)
         )
@@ -70,7 +81,7 @@ async def start_tallying(
 
 
 @router.post("/partial-decrypt/{trustee_id}", response_model=PartialDecryptResponse)
-async def partial_decrypt(
+def partial_decrypt(
     trustee_id: UUID,
     election_id: UUID,
     db: Session = Depends(get_db)
@@ -87,7 +98,7 @@ async def partial_decrypt(
     logger.info(f"Trustee {trustee_id} performing partial decryption for election {election_id}")
     
     try:
-        result = await tallying_service.partial_decrypt(
+        result = tallying_service.partial_decrypt(
             db=db,
             election_id=str(election_id),
             trustee_id=str(trustee_id)
@@ -120,7 +131,7 @@ async def partial_decrypt(
 
 
 @router.post("/finalize", response_model=TallyFinalizeResponse)
-async def finalize_tally(
+def finalize_tally(
     request: TallyFinalizeRequest,
     db: Session = Depends(get_db)
 ):
@@ -139,7 +150,7 @@ async def finalize_tally(
     logger.info(f"Finalizing tally for election: {request.election_id}")
     
     try:
-        result = await tallying_service.finalize_tally(
+        result = tallying_service.finalize_tally(
             db=db,
             election_id=str(request.election_id)
         )
@@ -167,7 +178,7 @@ async def finalize_tally(
 
 
 @router.get("/status/{election_id}", response_model=TallyStatusResponse)
-async def get_tally_status(
+def get_tally_status(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -198,7 +209,7 @@ async def get_tally_status(
 
 
 @router.get("/aggregate-info/{election_id}")
-async def get_aggregation_info(
+def get_aggregation_info(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):

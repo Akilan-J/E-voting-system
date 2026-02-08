@@ -1,6 +1,7 @@
 """
 FastAPI Main Application
 EPIC 4: Privacy-Preserving Tallying & Result Verification
+EPIC 5: Verification & Audit Ops
 """
 
 from fastapi import FastAPI, Request
@@ -9,9 +10,14 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 import time
+from datetime import datetime, timedelta
+# Monkeypatch time.clock for passlib compatibility on Python 3.8+
+if not hasattr(time, 'clock'):
+    time.clock = time.time
 
 
 from app.models.database import engine, Base, get_db
+from app.models import auth_models
 from app.routers import (
     tallying, 
     trustees, 
@@ -19,9 +25,11 @@ from app.routers import (
     mock_data, 
     ops, 
     verification, 
-    security
+    security,
+    ledger,
+    auth,
+    voter
 )
-
 
 # Configure logging
 logging.basicConfig(
@@ -31,17 +39,68 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# Create tables (if not exists) at module level to avoid async issues
+logger.info("📊 Initializing database tables...")
+Base.metadata.create_all(bind=engine)
+
+def init_demo_data():
+    """Sync initialization of demo data"""
+    db = next(get_db())
+    try:
+        from app.models.database import Election
+        from app.models.auth_models import Citizen
+        import uuid
+        import hashlib
+        
+        # 1. Ensure Demo Election exists
+        demo_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        election = db.query(Election).filter(Election.election_id == demo_id).first()
+        if not election:
+            logger.info("Creating demo election...")
+            now = datetime.utcnow()
+            election = Election(
+            election_id=demo_id,
+            title="National General Election 2026",
+             description="Secure, multi-trustee e-voting demonstration",
+            candidates=[
+        {"id": 1, "name": "Alice Johnson", "party": "Progressive"},
+        {"id": 2, "name": "Bob Smith", "party": "Conservative"},
+        {"id": 3, "name": "Charlie Davis", "party": "Independent"}
+    ],
+    start_time=now,
+    end_time=now + timedelta(days=1),
+    status="active"
+)
+
+            db.add(election)
+            db.commit()
+
+        # 2. Ensure Demo Citizens exist (Aadhaar Sim)
+        test_credentials = ["123456789012", "987654321098", "555566667777"]
+        for cred in test_credentials:
+            ident_hash = hashlib.sha256(cred.encode()).hexdigest()
+            if not db.query(Citizen).filter(Citizen.identity_hash == ident_hash).first():
+                db.add(Citizen(
+                    identity_hash=ident_hash,
+                    full_name_hashed=hashlib.sha256(f"Citizen {cred}".encode()).hexdigest(),
+                    is_eligible_voter=True
+                ))
+        db.commit()
+        logger.info("✅ Database initialized with demo data")
+    except Exception as e:
+        logger.error(f"Failed to initialize demo data: {e}")
+    finally:
+        db.close()
+
+# Run demo data init
+init_demo_data()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
-    logger.info("🚀 Starting E-Voting System - EPIC 4")
-    logger.info("📊 Initializing database tables...")
-    
-    # Create tables (if not exists)
-    Base.metadata.create_all(bind=engine)
-    
-    logger.info("✅ Database initialized")
+    logger.info("🚀 Starting E-Voting System - EPIC 4 & 5")
     logger.info("🔐 Cryptography services ready")
     
     yield
@@ -52,7 +111,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="E-Voting System API",
-    description="Privacy-Preserving Tallying & Result Verification (EPIC 4)",
+    description="Privacy-Preserving Tallying & Verification Ops",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -98,6 +157,9 @@ app.include_router(results.router, prefix="/api/results", tags=["results"])
 app.include_router(ops.router, prefix="/api/ops", tags=["ops"])
 app.include_router(verification.router, prefix="/api/verify", tags=["verification"])
 app.include_router(security.router, prefix="/api/security", tags=["security"])
+app.include_router(ledger.router, prefix="/api/ledger", tags=["Ledger"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(voter.router, prefix="/api/voter", tags=["Voter"])
 
 
 # Root endpoint
@@ -105,7 +167,7 @@ app.include_router(security.router, prefix="/api/security", tags=["security"])
 async def root():
     """Root endpoint"""
     return {
-        "message": "E-Voting System API - EPIC 4",
+        "message": "E-Voting System API - EPIC 4 & 5",
         "version": "1.0.0",
         "status": "operational",
         "docs": "/docs",
@@ -113,9 +175,11 @@ async def root():
     }
 
 
+
+
 # Health check endpoint
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint for Docker"""
     try:
         # Test database connection
