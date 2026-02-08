@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 import pyotp
 import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
 
 from app.models.database import get_db
 from app.models.auth_models import User, SecurityLog
@@ -21,23 +24,42 @@ def hash_identity(credential: str) -> str:
     return hashlib.sha256(credential.encode()).hexdigest()
 
 @router.post("/login", response_model=Token)
-async def login(login_req: LoginRequest, db: Session = Depends(get_db)):
+def login(login_req: LoginRequest, db: Session = Depends(get_db)):
+    from app.models.auth_models import Citizen
     identity_hash = hash_identity(login_req.credential)
+    
+    # 1. First, check the Citizen source of truth (e.g. Aadhaar)
+    citizen = db.query(Citizen).filter(Citizen.identity_hash == identity_hash).first()
+    
+    if not citizen:
+        # Log failed attempt
+        logger.warning(f"Unauthorized login attempt with credential hash: {identity_hash[:10]}...")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Credential not found in national citizen database"
+        )
+        
+    if not citizen.is_eligible_voter or citizen.is_deceased:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Citizen exists but is not eligible to vote (Inactive or Deceased)"
+        )
+
+    # 2. Check if local user account exists, if not create it from Citizen data
     user = db.query(User).filter(User.identity_hash == identity_hash).first()
 
-    # US-1: Auto-provision if not exists (Simulating "Given a voter has a valid digital ID")
-    # In reality, this would check an external Eligible list first.
     if not user:
+        # Map citizen to a local voter account
         user = User(identity_hash=identity_hash, role="voter")
         db.add(user)
         db.commit()
         db.refresh(user)
         
-        # Log creation
+        # Log account provisioning
         log = SecurityLog(
             user_id=user.user_id,
             event_type="USER_CREATED",
-            details="User created via login"
+            details="Voter account provisioned from Citizen record"
         )
         db.add(log)
         db.commit()
@@ -75,7 +97,7 @@ async def login(login_req: LoginRequest, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer", "role": user.role, "mfa_required": False}
 
 @router.post("/mfa/setup", response_model=MFASetupResponse)
-async def setup_mfa(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def setup_mfa(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # US-2: Implement TOTP enrollment
     secret = pyotp.random_base32()
     
@@ -92,7 +114,7 @@ async def setup_mfa(current_user: User = Depends(get_current_user), db: Session 
     return {"secret": secret, "provisioning_uri": uri}
 
 @router.post("/mfa/verify")
-async def verify_mfa_setup(
+def verify_mfa_setup(
     verify_req: MFAVerifyRequest, 
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
@@ -139,5 +161,5 @@ async def verify_mfa_setup(
     return {"access_token": access_token, "token_type": "bearer", "role": current_user.role}
 
 @router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(get_current_user)):
+def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user

@@ -12,7 +12,7 @@ from app.utils.crypto_utils import sign_blinded_message
 router = APIRouter()
 
 @router.get("/eligibility/{election_id}", response_model=EligibilityResponse)
-async def check_eligibility(
+def check_eligibility(
     election_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -45,26 +45,36 @@ async def check_eligibility(
     }
 
 @router.post("/credential/issue", response_model=BlindSignResponse)
-async def issue_credential(
+def issue_credential(
     req: BlindSignRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    from app.models.database import Election
+    
+    # 0. Check if election exists
+    election = db.query(Election).filter(Election.election_id == req.election_id).first()
+    if not election:
+        raise HTTPException(status_code=404, detail="Election not found")
+
     # 1. Verify Eligibility
-    # Re-use logic or call function
     if current_user.role != "voter" or not current_user.is_active:
-        raise HTTPException(status_code=403, detail="Not eligible")
+        raise HTTPException(status_code=403, detail="User is not an active voter")
 
     # 2. Check if already issued (De-duplication US-6/US-13 context)
-    # We check SecurityLog for previous issuance
+    # We check SecurityLog for previous issuance using a more specific format
+    search_str = f"Election: {req.election_id}"
     existing_issuance = db.query(SecurityLog).filter(
         SecurityLog.user_id == current_user.user_id,
         SecurityLog.event_type == "CREDENTIAL_ISSUED",
-        SecurityLog.details.contains(str(req.election_id))
+        SecurityLog.details == search_str
     ).first()
     
     if existing_issuance:
-        raise HTTPException(status_code=400, detail="Credential already issued for this election")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Credential has already been issued to this identity for election {req.election_id}"
+        )
 
     # 3. Sign
     try:

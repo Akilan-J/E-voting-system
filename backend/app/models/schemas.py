@@ -195,3 +195,30 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+    
+# Anonymous Voting Schemas
+
+from pydantic import BaseModel
+from uuid import UUID
+from typing import Optional
+
+class EligibilityResponse(BaseModel):
+    is_eligible: bool
+    reason_code: Optional[str] = None
+    election_id: UUID
+
+
+class BlindSignRequest(BaseModel):
+    election_id: UUID
+    blinded_payload: str
+
+
+class BlindSignResponse(BaseModel):
+    signature: str
+
+
+class CastVoteRequest(BaseModel):
+    election_id: UUID
+    encrypted_vote: str
+    token: str
+    signature: str

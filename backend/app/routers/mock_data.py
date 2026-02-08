@@ -9,8 +9,17 @@ import logging
 import random
 from typing import Optional
 import json
+from datetime import datetime, timedelta
 
-from app.models import get_db, Election, EncryptedVote, Trustee
+start_time = datetime.utcnow()
+end_time = start_time + timedelta(days=1)
+from datetime import datetime, timedelta
+
+start_time = datetime.utcnow()
+end_time = start_time + timedelta(days=1)
+
+
+from app.models.database import get_db, Election, EncryptedVote, Trustee
 from app.models.schemas import MockVotesGenerateRequest, MockVotesGenerateResponse
 from app.services import encryption_service
 
@@ -19,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("/generate-votes", response_model=MockVotesGenerateResponse)
-async def generate_mock_votes(
+def generate_mock_votes(
     count: int = 100,
     election_id: Optional[UUID] = None,
     db: Session = Depends(get_db)
@@ -159,7 +168,7 @@ async def generate_mock_votes(
 
 
 @router.post("/reset-database")
-async def reset_database(
+def reset_database(
     confirm: bool = False,
     db: Session = Depends(get_db)
 ):
@@ -215,7 +224,7 @@ async def reset_database(
 
 
 @router.get("/election-stats")
-async def get_election_stats(
+def get_election_stats(
     election_id: Optional[UUID] = None,
     db: Session = Depends(get_db)
 ):
@@ -277,8 +286,76 @@ async def get_election_stats(
     }
 
 
+@router.get("/citizens")
+def get_citizens(db: Session = Depends(get_db)):
+    """
+    View the citizen source-of-truth database.
+    Shows the mapping of credential hashes to eligibility.
+    """
+    from app.models import Citizen
+    citizens = db.query(Citizen).all()
+    return citizens
+
+
+@router.post("/setup-system")
+def setup_system(
+    db: Session = Depends(get_db)
+):
+    """
+    Complete system initialization:
+    1. Create default election if none exists
+    2. Populate Citizen database (source of truth)
+    3. Setup Trustees for threshold cryptography
+    """
+    from app.models.database import Election
+    from app.models.auth_models import Citizen
+    import hashlib
+    
+    # 1. Ensure Election exists
+    election = db.query(Election).first()
+    if not election:
+        election = Election(
+            title="General Election 2026",
+            description="Secure, multi-trustee e-voting demonstration",
+            candidates=[
+                {"id": 1, "name": "Alice Johnson", "party": "Progressive"},
+                {"id": 2, "name": "Bob Smith", "party": "Conservative"},
+                {"id": 3, "name": "Charlie Davis", "party": "Independent"}
+            ],
+            start_time=datetime.utcnow(),
+            end_time=datetime.utcnow(), # Demo ends immediately
+            status="active"
+        )
+        db.add(election)
+        db.commit()
+    
+    # 2. Populate Citizen Database (Simulated Aadhaar)
+    # Clear old citizens first if any? No, just add defaults
+    test_credentials = ["123456789012", "987654321098", "555566667777"]
+    citizens_added = 0
+    for cred in test_credentials:
+        ident_hash = hashlib.sha256(cred.encode()).hexdigest()
+        if not db.query(Citizen).filter(Citizen.identity_hash == ident_hash).first():
+            db.add(Citizen(
+                identity_hash=ident_hash,
+                full_name_hashed=hashlib.sha256(f"Citizen {cred}".encode()).hexdigest(),
+                is_eligible_voter=True
+            ))
+            citizens_added += 1
+    
+    # 3. Setup Trustees
+    trustees_result = setup_test_trustees(db)
+    
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"System initialized. {citizens_added} citizens added.",
+        "trustees": trustees_result
+    }
+
 @router.post("/setup-trustees")
-async def setup_test_trustees(
+def setup_test_trustees(
     db: Session = Depends(get_db)
 ):
     """

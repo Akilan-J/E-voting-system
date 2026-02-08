@@ -11,7 +11,7 @@ import logging
 import hashlib
 import json
 
-from app.models import get_db, ElectionResult, Election, AuditLog
+from app.models.database import get_db, ElectionResult, Election, AuditLog
 from app.models.schemas import (
     ElectionResultResponse,
     ResultVerificationRequest,
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=List[ElectionResultResponse])
-async def get_all_results(
+def get_all_results(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -53,7 +53,7 @@ async def get_all_results(
 
 
 @router.get("/{election_id}", response_model=ElectionResultResponse)
-async def get_result(
+def get_result(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -85,7 +85,7 @@ async def get_result(
 
 
 @router.post("/verify", response_model=ResultVerificationResponse)
-async def verify_results(
+def verify_results(
     request: ResultVerificationRequest,
     db: Session = Depends(get_db)
 ):
@@ -146,7 +146,7 @@ async def verify_results(
 
 
 @router.get("/audit-log/{election_id}", response_model=List[AuditLogResponse])
-async def get_audit_log(
+def get_audit_log(
     election_id: UUID,
     skip: int = 0,
     limit: int = 100,
@@ -170,7 +170,7 @@ async def get_audit_log(
             log_id=log.log_id,
             operation_type=log.operation_type,
             performed_by=log.performed_by,
-            details=log.details,
+            details=json.loads(log.details) if isinstance(log.details, str) else log.details,
             status=log.status,
             timestamp=log.timestamp
         )
@@ -179,7 +179,7 @@ async def get_audit_log(
 
 
 @router.post("/publish/{election_id}")
-async def publish_to_blockchain(
+def publish_to_blockchain(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -256,7 +256,7 @@ async def publish_to_blockchain(
 
 
 @router.get("/summary/{election_id}")
-async def get_result_summary(
+def get_result_summary(
     election_id: UUID,
     db: Session = Depends(get_db)
 ):
@@ -265,7 +265,7 @@ async def get_result_summary(
     
     - **election_id**: UUID of the election
     """
-    from app.models import PartialDecryption, TallyingSession
+    from app.models.database import PartialDecryption, TallyingSession
     
     result = db.query(ElectionResult).filter(
         ElectionResult.election_id == election_id

@@ -19,7 +19,7 @@ from app.models.ledger_models import LedgerBlock
 router = APIRouter()
 
 @router.get("/blocks", response_model=List[BlockHeader])
-async def list_blocks(
+def list_blocks(
     election_id: Optional[uuid.UUID] = None,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -44,7 +44,7 @@ async def list_blocks(
     ]
 
 @router.post("/submit")
-async def submit_entry(
+def submit_entry(
     election_id: Optional[uuid.UUID] = None,
     vote_id: Optional[uuid.UUID] = None,
     ciphertext: Optional[str] = None,
@@ -62,7 +62,7 @@ async def submit_entry(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/propose")
-async def propose_block(
+def propose_block(
     election_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
 ):
@@ -80,7 +80,7 @@ async def propose_block(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/approve")
-async def approve_block(
+def approve_block(
     height: int,
     election_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
@@ -97,7 +97,7 @@ async def approve_block(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/finalize")
-async def finalize_block(
+def finalize_block(
     height: int,
     election_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
@@ -114,7 +114,7 @@ async def finalize_block(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/verify-chain")
-async def verify_chain(
+def verify_chain(
     election_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
 ):
@@ -122,7 +122,7 @@ async def verify_chain(
     return ledger_service.verify_chain(db, election_id)
 
 @router.post("/snapshot/create")
-async def create_snapshot(
+def create_snapshot(
     height: int,
     election_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
@@ -139,7 +139,7 @@ async def create_snapshot(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/prune")
-async def prune_ledger(
+def prune_ledger(
     height: int,
     election_id: Optional[uuid.UUID] = None,
     db: Session = Depends(get_db)
