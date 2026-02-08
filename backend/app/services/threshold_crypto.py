@@ -1,6 +1,20 @@
 """
-Threshold Cryptography Service
-Implements Shamir's Secret Sharing for distributed key management
+Threshold Cryptography Service for Epic 4
+
+Implements Shamir's Secret Sharing scheme. Instead of one person
+holding the private key (single point of failure), we split it
+into 5 shares and require any 3 to decrypt.
+
+Why threshold crypto matters:
+- No single trustee can access results alone
+- If 2 trustees are compromised, votes are still safe
+- Even if 2 trustees are unavailable, we can still decrypt
+
+The math: A polynomial of degree (threshold-1) is used. The secret
+is the y-intercept. Each trustee gets a point on the curve.
+Any 3 points can reconstruct the polynomial and find the secret.
+
+Author: Kapil (Epic 4)
 """
 
 import secrets
@@ -14,16 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 class ThresholdCryptoService:
-    """Service for threshold cryptography operations"""
+    """
+    Manages secret sharing for trustee-based decryption.
+    
+    We use a 3-of-5 threshold: there are 5 trustees total,
+    and any 3 can work together to decrypt the results.
+    """
     
     def __init__(self, threshold: int, total_trustees: int):
-        """
-        Initialize threshold cryptography
-        
-        Args:
-            threshold: Minimum number of trustees needed to decrypt
-            total_trustees: Total number of trustees
-        """
+        # Sanity checks - threshold must make sense
         if threshold > total_trustees:
             raise ValueError("Threshold cannot exceed total trustees")
         if threshold < 1:

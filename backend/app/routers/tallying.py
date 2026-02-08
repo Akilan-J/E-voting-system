@@ -1,5 +1,16 @@
 """
-Tallying Router - API endpoints for vote tallying operations
+Tallying Router for Epic 4
+
+API endpoints that handle the vote tallying workflow:
+- /start: Begins aggregation of encrypted votes
+- /partial-decrypt: Accepts trustee decryption contributions  
+- /finalize: Computes final results when enough trustees decrypt
+- /status: Shows current tallying progress
+
+All endpoints require a valid election ID and proper
+authorization (trustees only for decrypt operations).
+
+Author: Kapil (Epic 4)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
