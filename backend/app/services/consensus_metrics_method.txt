@@ -1,0 +1,23 @@
+    def get_consensus_metrics(self, db: Session, election_id: Optional[uuid.UUID] = None) -> Dict:
+        """US-33: Return consensus health metrics"""
+        from datetime import timedelta
+        
+        five_min_ago = datetime.utcnow() - timedelta(minutes=5)
+        active_nodes = db.query(LedgerNode).filter(LedgerNode.last_seen >= five_min_ago).count()
+        pending_blocks = db.query(LedgerBlock).filter(
+            LedgerBlock.committed == False,
+            LedgerBlock.election_id == election_id if election_id else True
+        ).count()
+        latest_block = db.query(LedgerBlock).filter(
+            LedgerBlock.committed == True,
+            LedgerBlock.election_id == election_id if election_id else True
+        ).order_by(LedgerBlock.height.desc()).first()
+        
+        return {
+            "quorum_size": self.quorum,
+            "total_nodes": self.n,
+            "active_nodes": active_nodes,
+            "pending_blocks": pending_blocks,
+            "latest_height": latest_block.height if latest_block else -1,
+            "consensus_healthy": active_nodes >= self.quorum
+        }

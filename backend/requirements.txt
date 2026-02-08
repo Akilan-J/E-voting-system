@@ -22,3 +22,6 @@ pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
 pyotp==2.9.0
+
+# EPIC 3: US-45 Public Read Access Enhancements
+slowapi==0.1.9

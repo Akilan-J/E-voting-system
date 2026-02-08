@@ -120,3 +120,79 @@ def test_propose_block_logic():
 
 # Note: Integration tests with a real DB are better but complex to set up in this agent environment.
 # We will trust the service logic and the robust manual verification plan.
+
+# US-40: Block Validation Tests
+
+def test_signature_generation():
+    """Test that _sign method generates consistent signatures"""
+    data = "test_block_hash"
+    sig1 = ledger_service._sign(data)
+    sig2 = ledger_service._sign(data)
+    assert sig1 == sig2  # Deterministic
+    assert len(sig1) == 64  # SHA-256 hash length
+
+def test_signature_verification():
+    """Test signature verification logic"""
+    data = "test_data"
+    signature = ledger_service._sign(data)
+    
+    # Disable validation flag for this test
+    original_flag = ledger_service.enable_signature_validation
+    ledger_service.enable_signature_validation = True
+    
+    # Verify with correct node_id
+    is_valid = ledger_service._verify_signature(data, signature, ledger_service.node_id)
+    assert is_valid == True
+    
+    # Verify with wrong signature
+    is_valid = ledger_service._verify_signature(data, "wrong_signature", ledger_service.node_id)
+    assert is_valid == False
+    
+    # Restore flag
+    ledger_service.enable_signature_validation = original_flag
+
+def test_block_size_limits():
+    """Test that block size limits are configured"""
+    assert ledger_service.max_block_size > 0
+    assert ledger_service.max_entries_per_block > 0
+    assert ledger_service.max_entries_per_block == 10000  # Default from env
+
+def test_block_structure_validation():
+    """Test block structure validation catches invalid blocks"""
+    db = MagicMock()
+    
+    # Test invalid height
+    invalid_block = LedgerBlock(
+        height=-1,
+        prev_hash="a"*64,
+        merkle_root="b"*64,
+        block_hash="c"*64,
+        entry_count=5
+    )
+    is_valid, error_code = ledger_service._validate_block_structure(invalid_block, db)
+    assert is_valid == False
+    assert error_code == "invalid_height"
+    
+    # Test invalid hash length
+    invalid_block2 = LedgerBlock(
+        height=1,
+        prev_hash="short",  # Too short
+        merkle_root="b"*64,
+        block_hash="c"*64,
+        entry_count=5
+    )
+    is_valid, error_code = ledger_service._validate_block_structure(invalid_block2, db)
+    assert is_valid == False
+    assert error_code == "invalid_hash_length"
+    
+    # Test too many entries
+    invalid_block3 = LedgerBlock(
+        height=1,
+        prev_hash="a"*64,
+        merkle_root="b"*64,
+        block_hash="c"*64,
+        entry_count=20000  # Exceeds max
+    )
+    is_valid, error_code = ledger_service._validate_block_structure(invalid_block3, db)
+    assert is_valid == False
+    assert error_code == "too_many_entries"

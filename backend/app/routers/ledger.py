@@ -6,25 +6,38 @@ Exposes REST endpoints for blockchain operations:
 - Maintenance: /snapshot, /prune, /node/health
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
+import os
 
 from app.models.database import get_db
 from app.models.blockchain import BlockHeader, LedgerEntryDTO
 from app.services.ledger_service import ledger_service
 from app.models.ledger_models import LedgerBlock
 
+# US-45: Rate limiting and caching
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi.responses import JSONResponse
+
+# Initialize rate limiter
+enable_rate_limiting = os.getenv("LEDGER_ENABLE_RATE_LIMITING", "true").lower() == "true"
+limiter = Limiter(key_func=get_remote_address, enabled=enable_rate_limiting)
+
 router = APIRouter()
 
 @router.get("/blocks", response_model=List[BlockHeader])
+@limiter.limit("100/minute")  # US-45: Rate limiting for public access
 async def list_blocks(
+    request: Request,  # Required for rate limiter
     election_id: Optional[uuid.UUID] = None,
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    """List blocks from the ledger"""
+    """List blocks from the ledger (US-45: rate-limited public endpoint)"""
     query = db.query(LedgerBlock)
     if election_id:
         query = query.filter(LedgerBlock.election_id == election_id)

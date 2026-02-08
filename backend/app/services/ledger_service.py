@@ -33,10 +33,62 @@ class LedgerService:
         self.quorum = 2 * self.f + 1
         # In a real system, private keys would be in HSM. Here we simulate.
         self.private_key = "simulated_private_key_for_" + self.node_id
+        
+        # US-40: Block validation limits
+        self.max_block_size = int(os.getenv("LEDGER_MAX_BLOCK_SIZE", "10485760"))  # 10MB
+        self.max_entries_per_block = int(os.getenv("LEDGER_MAX_ENTRIES_PER_BLOCK", "10000"))
+        self.enable_signature_validation = os.getenv("LEDGER_ENABLE_SIGNATURE_VALIDATION", "false").lower() == "true"
+        
+        # US-33: Consensus configuration
+        self.consensus_timeout = int(os.getenv("LEDGER_CONSENSUS_TIMEOUT_SECONDS", "300"))
 
     def _hash(self, data: str) -> str:
         """Compute SHA-256 hash"""
         return hashlib.sha256(data.encode()).hexdigest()
+    
+    def _sign(self, data: str) -> str:
+        """Sign data with node's private key (simulated)"""
+        # In production: use cryptography library with real keys
+        return self._hash(f"{data}{self.node_id}{self.private_key}")
+    
+    def _verify_signature(self, data: str, signature: str, node_id: str) -> bool:
+        """Verify signature (simulated for demo, real in production)"""
+        if not self.enable_signature_validation:
+            return True  # Skip validation if disabled
+        
+        # For demo: simple hash-based verification
+        # Production: use cryptography library with public key verification
+        expected = self._hash(f"{data}{node_id}simulated_private_key_for_{node_id}")
+        return signature == expected
+    
+    def _validate_block_structure(self, block: LedgerBlock, db: Session) -> Tuple[bool, str]:
+        """US-40: Validate block structure and rules"""
+        # Check height monotonicity
+        if block.height < 0:
+            return (False, "invalid_height")
+        
+        # Check prev_hash linkage (except genesis)
+        if block.height > 0:
+            prev_block = db.query(LedgerBlock).filter(
+                LedgerBlock.election_id == block.election_id,
+                LedgerBlock.height == block.height - 1
+            ).first()
+            
+            if not prev_block:
+                return (False, "missing_prev_block")
+            
+            if block.prev_hash != prev_block.block_hash:
+                return (False, "invalid_prev_hash")
+        
+        # Check entry count
+        if block.entry_count > self.max_entries_per_block:
+            return (False, "too_many_entries")
+        
+        # Check hash length (SHA-256 = 64 hex chars)
+        if len(block.block_hash) != 64 or len(block.prev_hash) != 64 or len(block.merkle_root) != 64:
+            return (False, "invalid_hash_length")
+        
+        return (True, "valid")
 
     def _compute_merkle_root(self, entries: List[LedgerEntry]) -> str:
         """Compute Merkle Root for a list of entries"""
@@ -192,8 +244,8 @@ class LedgerService:
         if existing:
             return existing
 
-        # Sign logic (Simulation)
-        signature = self._hash(f"{block.block_hash}{self.private_key}")
+        # Sign logic (using _sign method)
+        signature = self._sign(block.block_hash)
         
         approval = LedgerApproval(
             election_id=election_id,
@@ -208,7 +260,7 @@ class LedgerService:
         return approval
 
     def finalize_block(self, db: Session, election_id: Optional[uuid.UUID], height: int) -> LedgerBlock:
-        """Finalize a block if Quorum is met"""
+        """Finalize a block if Quorum is met (US-33, US-40 enhanced)"""
         block = db.query(LedgerBlock).filter(
             LedgerBlock.election_id == election_id,
             LedgerBlock.height == height
@@ -220,6 +272,21 @@ class LedgerService:
         if block.committed:
             return block
 
+        # US-40: Validate block structure before finalization
+        is_valid, error_code = self._validate_block_structure(block, db)
+        if not is_valid:
+            logger.error(f"Block validation failed: {error_code} for block {height}")
+            # Record rejection event
+            rejection_event = LedgerEvent(
+                election_id=election_id,
+                event_type="block_rejected",
+                payload_hash=self._hash(f"{block.block_hash}{error_code}"),
+                anchored_block_height=height
+            )
+            db.add(rejection_event)
+            db.commit()
+            raise ValueError(f"Block validation failed: {error_code}")
+
         # Count approvals
         approvals = db.query(LedgerApproval).filter(
             LedgerApproval.election_id == election_id,
@@ -229,6 +296,13 @@ class LedgerService:
         
         if len(approvals) < self.quorum:
             raise ValueError(f"Quorum not met: {len(approvals)}/{self.quorum}")
+
+        # US-40: Verify signatures if enabled
+        if self.enable_signature_validation:
+            for approval in approvals:
+                if not self._verify_signature(block.block_hash, approval.signature, approval.node_id):
+                    logger.error(f"Invalid signature from node {approval.node_id} for block {height}")
+                    raise ValueError(f"Invalid signature from node {approval.node_id}")
 
         # Update block
         cert_data = "".join(sorted([a.signature for a in approvals]))
