@@ -56,3 +56,14 @@ class BlindSignRequest(BaseModel):
 class BlindSignResponse(BaseModel):
     signature: str
 
+class VoteCastRequest(BaseModel):
+    election_id: UUID
+    token: str # Unblinded token (integer string)
+    signature: str # Signature from server (integer string)
+    vote_ciphertext: str
+    
+class VoteCastResponse(BaseModel):
+    status: str
+    receipt_hash: str
+    timestamp: datetime
+

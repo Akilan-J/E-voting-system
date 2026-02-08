@@ -54,16 +54,21 @@ class EligibilityRecord(Base):
 class BlindToken(Base):
     """
     US-4. Store only token hash.
-    Token format (election_id, exp, token_id, signature) and store only token hash.
+    Token format (election_id, expiry, token_id, signature) and store only token hash.
     """
     __tablename__ = "blind_tokens"
     
     id = Column(Integer, primary_key=True, index=True)
-    token_hash = Column(String(255), unique=True, index=True, nullable=False)
+    token_hash = Column(String(255), unique=True, index=True, nullable=False) # Hash of the unblinded token
     status = Column(String(50), default="UNUSED") # UNUSED, USED, REVOKED
     issued_at = Column(DateTime, default=datetime.utcnow)
     used_at = Column(DateTime, nullable=True)
-    election_id = Column(UUID(as_uuid=True), nullable=False)
+    expiry = Column(DateTime, nullable=False)
+    election_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    
+    # Revocation support
+    revocation_reason = Column(String(255), nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
 
 class Citizen(Base):
     """
@@ -72,9 +77,11 @@ class Citizen(Base):
     __tablename__ = "citizens"
     
     id = Column(Integer, primary_key=True, index=True)
-    identity_hash = Column(String(255), unique=True, index=True, nullable=False)
+    identity_hash = Column(String(255), unique=True, index=True, nullable=False) # Salted hash
     full_name_hashed = Column(String(255))
     is_eligible_voter = Column(Boolean, default=True)
     is_deceased = Column(Boolean, default=False)
     registration_date = Column(DateTime, default=datetime.utcnow)
+    # Geo-location / Jurisdiction for eligibility rules
+    jurisdiction_code = Column(String(50), nullable=True)
 
