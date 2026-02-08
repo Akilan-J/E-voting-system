@@ -1,5 +1,14 @@
 """
-Trustees Router - API endpoints for trustee management
+Trustees Router for Epic 4
+
+Manages the 5 trustees who hold decryption key shares.
+Endpoints for registering trustees, generating key shares,
+and checking trustee status.
+
+Trustees are the guardians of election integrity - no single
+trustee can decrypt results alone, but any 3 can together.
+
+Author: Kapil (Epic 4)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status

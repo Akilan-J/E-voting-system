@@ -1,6 +1,16 @@
 """
-Homomorphic Encryption Service using Paillier Cryptosystem
-Supports encrypted vote aggregation for tallying
+Encryption Service for Epic 4: Privacy-Preserving Tallying
+
+Uses Paillier homomorphic encryption to allow vote aggregation
+without decrypting individual votes. This is the core crypto module.
+
+How it works:
+1. Generate keypair for the election
+2. Encrypt each vote as a one-hot vector (e.g., [0, 1, 0] for candidate 2)
+3. Aggregate votes by multiplying ciphertexts (homomorphic addition)
+4. Decrypt only the final tally, never individual votes
+
+Author: Kapil (Epic 4)
 """
 
 from phe import paillier
@@ -14,15 +24,16 @@ logger = logging.getLogger(__name__)
 
 
 class HomomorphicEncryptionService:
-    """Service for homomorphic encryption operations"""
+    """
+    Handles all encryption operations for the voting system.
+    
+    The Paillier cryptosystem has a special property: you can add
+    encrypted numbers together without knowing their values. This
+    lets us count votes while keeping each vote secret.
+    """
     
     def __init__(self, key_size: int = 2048):
-        """
-        Initialize the encryption service
-        
-        Args:
-            key_size: Size of encryption keys in bits (default 2048)
-        """
+        # Key size affects security. 2048 bits is standard for elections.
         self.key_size = key_size
         self.public_key = None
         self.private_key = None

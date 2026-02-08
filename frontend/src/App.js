@@ -21,7 +21,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🗳️ E-Voting System - EPIC 4</h1>
+        <h1>🗳️ E-Voting System</h1>
         <p>Privacy-Preserving Tallying & Result Verification</p>
         <div className="system-status">
           Backend: <span className={systemStatus.status === 'healthy' ? 'status-healthy' : 'status-offline'}>
@@ -72,7 +72,7 @@ function App() {
       </main>
 
       <footer className="App-footer">
-        <p>EPIC 4: Privacy-Preserving Tallying & Result Verification</p>
+        <p>Privacy-Preserving Tallying & Result Verification</p>
         <p>Threshold: 3-of-5 Trustees | Homomorphic Encryption Enabled</p>
       </footer>
     </div>
