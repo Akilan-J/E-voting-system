@@ -194,4 +194,92 @@ class SuccessResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
+
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# Incident Schemas (US-70)
+class IncidentCreate(BaseModel):
+    title: str
+    description: str
+    severity: str
+    reported_by: Optional[str] = None
+
+
+class IncidentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
+    incident_id: UUID
+    title: str
+    description: str
+    severity: str
+    status: str
+    reported_by: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    resolution_notes: Optional[str] = None
+
+
+
+class IncidentUpdate(BaseModel):
+    status: Optional[str] = None
+    resolution_notes: Optional[str] = None
+
+
+# US-62: Receipt Verification Schemas
+class ReceiptVerificationRequest(BaseModel):
+    receipt_hash: str
+    election_id: UUID
+
+
+class ReceiptVerificationResponse(BaseModel):
+    receipt_hash: str
+    status: str  # verified, not_found, invalid
+    block_index: Optional[int] = None
+    timestamp: Optional[datetime] = None
+    proof: Optional[Dict[str, Any]] = None
+
+
+# US-63: ZK Proof Verification Schemas
+class ZKProofVerificationRequest(BaseModel):
+    election_id: UUID
+    proof_bundle: Dict[str, Any]
+
+
+class ZKProofVerificationResponse(BaseModel):
+    is_valid: bool
+    verification_time_ms: float
+    evidence_hash: str
+    details: Dict[str, Any]
+
+
+# US-68: Threat Simulation Schemas
+class ThreatSimulationRequest(BaseModel):
+    scenario_type: str  # replay_attack, ddos, sql_injection, consensus_stall
+    intensity: str = "medium"  # low, medium, high
+    target_component: str = "all"
+
+
+class ThreatSimulationResponse(BaseModel):
+    simulation_id: str
+    scenario_type: str
+    status: str
+    logs: List[str]
+    detected_by_ids: bool
+
+
+# US-64/US-74: Replay & Audit Schemas
+class LedgerReplayRequest(BaseModel):
+    election_id: UUID
+    verify_signatures: bool = True
+
+
+class LedgerReplayResponse(BaseModel):
+    total_blocks: int
+    valid_blocks: int
+    invalid_blocks: int
+    tip_hash: str
+    recomputation_time_ms: float
+    status: str  # clean, corrupted
+    discrepancies: List[Dict[str, Any]]
+

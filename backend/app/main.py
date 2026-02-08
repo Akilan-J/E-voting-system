@@ -10,8 +10,18 @@ from contextlib import asynccontextmanager
 import logging
 import time
 
+
 from app.models.database import engine, Base, get_db
-from app.routers import tallying, trustees, results, mock_data
+from app.routers import (
+    tallying, 
+    trustees, 
+    results, 
+    mock_data, 
+    ops, 
+    verification, 
+    security
+)
+
 
 # Configure logging
 logging.basicConfig(
@@ -80,11 +90,14 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers
-app.include_router(trustees.router, prefix="/api/trustees", tags=["Trustees"])
-app.include_router(tallying.router, prefix="/api/tally", tags=["Tallying"])
-app.include_router(results.router, prefix="/api/results", tags=["Results"])
-app.include_router(mock_data.router, prefix="/api/mock", tags=["Mock Data"])
+# Include Routers
+app.include_router(trustees.router, prefix="/api/trustees", tags=["trustees"])
+app.include_router(mock_data.router, prefix="/api/mock", tags=["mock"])
+app.include_router(tallying.router, prefix="/api/tally", tags=["tallying"])
+app.include_router(results.router, prefix="/api/results", tags=["results"])
+app.include_router(ops.router, prefix="/api/ops", tags=["ops"])
+app.include_router(verification.router, prefix="/api/verify", tags=["verification"])
+app.include_router(security.router, prefix="/api/security", tags=["security"])
 
 
 # Root endpoint

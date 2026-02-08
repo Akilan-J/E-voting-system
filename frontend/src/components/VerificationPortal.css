@@ -1,0 +1,232 @@
+/* VerificationPortal.css */
+
+.verification-portal {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.verification-portal h2 {
+    color: #1f2937;
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.portal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 2rem;
+}
+
+.verifier-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: var(--transition-smooth);
+    animation: fadeIn 0.8s ease-in-out both;
+}
+
+.verifier-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.verifier-card h3 {
+    color: #374151;
+    font-size: 1.25rem;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.verifier-desc {
+    color: #6b7280;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.input-label {
+    display: block;
+    font-size: 0.85rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.verification-input {
+    width: 100%;
+    padding: 0.875rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    background: #f9fafb;
+}
+
+.verification-input:focus {
+    border-color: #6366f1;
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 10px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    background: #f8fafc;
+    transition: all 0.2s;
+}
+
+.upload-area:hover {
+    border-color: #6366f1;
+    background: #eef2ff;
+}
+
+.upload-icon {
+    font-size: 2rem;
+    color: #6366f1;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.upload-text {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.verify-btn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--primary-gradient);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    margin-top: 1rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+}
+
+.verify-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 20px -8px rgba(79, 70, 229, 0.5);
+}
+
+.verify-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Result Styles */
+.verification-result {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: 12px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.result-valid {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+}
+
+.result-invalid {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.result-icon {
+    font-size: 1.5rem;
+}
+
+.result-text {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.valid-text {
+    color: #166534;
+}
+
+.invalid-text {
+    color: #991b1b;
+}
+
+.result-details {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding-bottom: 0.5rem;
+}
+
+.detail-label {
+    color: #64748b;
+}
+
+.detail-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #334155;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Code Preview */
+.code-preview {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 1rem;
+}

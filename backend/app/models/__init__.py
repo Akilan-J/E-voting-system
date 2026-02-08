@@ -10,8 +10,10 @@ from app.models.database import (
     PartialDecryption,
     ElectionResult,
     AuditLog,
+
     VerificationProof,
-    TallyingSession
+    TallyingSession,
+    Incident
 )
 
 __all__ = [
@@ -26,5 +28,6 @@ __all__ = [
     "ElectionResult",
     "AuditLog",
     "VerificationProof",
-    "TallyingSession"
+    "TallyingSession",
+    "Incident"
 ]

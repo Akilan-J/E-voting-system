@@ -27,7 +27,8 @@ docker-compose up -d
 docker-compose ps
 ```
 
-**Access:** http://localhost:3000
+**Access:** 
+http://localhost:3000
 
 ---
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { resultsAPI, mockDataAPI } from '../services/api';
 import './ResultsDashboard.css';
@@ -7,6 +8,10 @@ function ResultsDashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Modal State
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState({ title: '', message: '', type: 'info' });
 
   useEffect(() => {
     loadResults();
@@ -18,11 +23,11 @@ function ResultsDashboard() {
     try {
       const stats = await mockDataAPI.getElectionStats();
       const electionId = stats.data.election.id;
-      
+
       try {
         const resultData = await resultsAPI.getByElectionId(electionId);
         setResults(resultData.data);
-        
+
         const summaryData = await resultsAPI.getSummary(electionId);
         setSummary(summaryData.data);
       } catch (err) {
@@ -38,10 +43,26 @@ function ResultsDashboard() {
     if (!results) return;
     try {
       const verification = await resultsAPI.verify(results.election_id);
-      alert(`Verification: ${verification.data.is_valid ? '✅ Valid' : '❌ Invalid'}`);
+      setModalContent({
+        title: verification.data.is_valid ? '✅ Verification Successful' : '❌ Verification Failed',
+        message: verification.data.is_valid
+          ? 'The election results have been cryptographically verified against the ledger. The proof is valid.'
+          : 'The election results could not be verified. Mismatch detected.',
+        type: verification.data.is_valid ? 'success' : 'error'
+      });
+      setShowModal(true);
     } catch (err) {
-      alert('Verification failed: ' + err.message);
+      setModalContent({
+        title: '⚠️ Verification Error',
+        message: 'Failed to verify results: ' + err.message,
+        type: 'error'
+      });
+      setShowModal(true);
     }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
   };
 
   if (loading) return <div className="loading"><div className="spinner"></div>Loading results...</div>;
@@ -73,7 +94,7 @@ function ResultsDashboard() {
           </div>
         )}
       </div>
-      
+
       <div className="results-content">
         <h3 className="section-title">🏆 Vote Distribution</h3>
         <div className="candidates-list">
@@ -122,6 +143,19 @@ function ResultsDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Verification Result Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>{modalContent.title}</h3>
+            <p>{modalContent.message}</p>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={closeModal}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

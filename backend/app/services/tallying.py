@@ -73,6 +73,18 @@ class TallyingService:
         
         logger.info(f"Found {len(encrypted_votes)} votes to aggregate")
         
+        # Load public key for aggregation
+        if election.encryption_params:
+            public_key = election.encryption_params.get("public_key")
+            if public_key:
+                self.encryption.load_public_key(public_key)
+            else:
+                logger.error("Public key missing from election parameters")
+                raise ValueError("Election public key not found")
+        else:
+            logger.error("Encryption parameters missing from election")
+            raise ValueError("Election encryption parameters not found")
+        
         # Aggregate encrypted votes using homomorphic addition
         encrypted_vote_strings = [vote.encrypted_vote for vote in encrypted_votes]
         

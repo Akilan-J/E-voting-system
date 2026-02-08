@@ -1,0 +1,229 @@
+# EPIC 5 — Verification & Audit Ops
+
+*US-62*
+*User Story:* As a voter, I want a receipt verification portal, so that I can confirm my ballot is included in the ledger.
+*Acceptance Criteria:*
+Given a valid receipt exists
+When the receipt is checked
+Then inclusion proof is shown as valid
+*Task Set:*
+Implement receipt lookup mapping to ledger tx/block reference
+Verify Merkle inclusion proof for the receipt entry
+Return deterministic verified/not-verified response
+Rate-limit lookups to prevent enumeration
+*Constraints:*
+Portal must not require login (preserve anonymity)
+
+---
+
+*US-63*
+*User Story:* As an observer, I want a ZK proof verification UI, so that I can validate tally proofs independently.
+*Acceptance Criteria:*
+Given a proof bundle is published
+When verification is executed
+Then pass/fail with reason codes is displayed
+*Task Set:*
+Implement verifier UI that loads proof + snapshot + result signature
+Run proof verification locally/server-side using public artifacts
+Display deterministic outputs and evidence hashes
+Export verification report
+
+---
+
+*US-64*
+*User Story:* As an auditor, I want a ledger replay audit tool, so that I can confirm all ballots are included and untampered.
+*Acceptance Criteria:*
+Given the ledger contains blocks
+When replay audit runs
+Then hash-chain or Merkle mismatches are detected
+*Task Set:*
+Iterate blocks and recompute prev_hash chain verification
+Verify Merkle roots and count ballot entries deterministically
+Generate replay report including tip hash and manifest hash
+Support cross-node comparison by tip hash
+
+---
+
+*US-65*
+*User Story:* As a citizen, I want an election transparency dashboard, so that turnout/progress is visible without exposing individuals.
+*Acceptance Criteria:*
+Given dashboard is public
+When it is viewed
+Then only aggregate metrics are displayed
+*Task Set:*
+Define safe aggregate metrics (turnout count, ledger height, status)
+Compute metrics from token-used counts and ledger state
+Serve via cached read-only API with rate limits
+Ensure no drill-down that enables targeting
+*Constraints:*
+Aggregate-only (no per-region micro-slices if risky)
+
+---
+
+*US-66*
+*User Story:* As an auditor, I want an end-to-end evidence package, so that verification can be reproduced offline.
+*Acceptance Criteria:*
+Given the evidence package is downloaded
+When hashes are checked
+Then tampering is detectable
+*Task Set:*
+Bundle ledger headers, snapshot hash, manifest hash, proof bundle, result signature, software hashes
+Generate signed manifest with checksums
+Publish immutable artifact for download
+Provide verifier steps and expected outputs
+
+---
+
+*US-67*
+*User Story:* As an operator, I want system event logging and monitoring, so that critical events are traceable.
+*Acceptance Criteria:*
+Given a critical event occurs
+When monitoring is active
+Then it is logged and alerts fire based on severity
+*Task Set:*
+Define event taxonomy and structured log schema
+Centralize logs/metrics into monitoring stack
+Create alert rules for security and availability
+Hash-chain critical audit events for tamper evidence
+*Constraints:*
+Never log vote choices or decrypted ballots
+
+---
+
+*US-68*
+*User Story:* As an auditor, I want threat simulation tools, so that resilience can be tested against tampering attempts.
+*Acceptance Criteria:*
+Given a replay/malformed-ballot scenario is simulated
+When the tool runs
+Then defenses trigger and evidence is recorded
+*Task Set:*
+Define attack scenarios and expected defensive outcomes
+Inject replay/oversize/invalid-proof and consensus-stall events in test mode
+Capture logs, alerts, and rejection evidence hashes
+Generate simulation report artifact
+*Constraints:*
+Must run only in test environment (no real election data)
+
+---
+
+*US-69*
+*User Story:* As a security team member, I want an attack detection dashboard, so that anomalies are visible in real time.
+*Acceptance Criteria:*
+Given anomaly thresholds are exceeded
+When the dashboard updates
+Then an incident alert appears with evidence context
+*Task Set:*
+Define detection signals (replay spikes, auth brute force, node lag, stalled commits)
+Stream security events into dashboard backend
+Deduplicate and correlate events by time window/correlation ID
+Link alerts to incident records and evidence hashes
+
+---
+
+*US-70*
+*User Story:* As an investigator, I want incident response logs, so that all response actions are traceable.
+*Acceptance Criteria:*
+Given an incident is opened
+When responders take actions
+Then each action is recorded immutably
+*Task Set:*
+Implement incident workflow store (OPEN→TRIAGE→MITIGATE→RESOLVE)
+Append-only action log with actor, timestamp, evidence links
+Export signed incident report
+Restrict access by RBAC
+*Constraints:*
+Incident logs must be append-only
+
+---
+
+*US-71*
+*User Story:* As an election official, I want a dispute resolution workflow, so that claims can be investigated consistently.
+*Acceptance Criteria:*
+Given a dispute is filed
+When it is processed
+Then evidence and resolution notes are recorded with audit trace
+*Task Set:*
+Implement case lifecycle and role-based access controls
+Attach receipts, replay reports, proof verifications as evidence artifacts
+Require justification for closure decisions
+Audit-log all case state transitions
+*Constraints:*
+Must not expose voter choices
+
+---
+
+*US-72*
+*User Story:* As an authority reviewer, I want compliance reporting, so that controls are evidenced against standards.
+*Acceptance Criteria:*
+Given a compliance report is generated
+When reviewed
+Then each claim references verifiable evidence
+*Task Set:*
+Map controls to measurable evidence artifacts (hashes/logs/proofs/configs)
+Generate report with evidence references and signatures
+Highlight missing controls and risks
+Export versioned report artifact
+*Constraints:*
+Do not claim real-world certification (academic project)
+
+---
+
+*US-73*
+*User Story:* As an auditor, I want anomaly detection on voting patterns, so that abnormal spikes are flagged early.
+*Acceptance Criteria:*
+Given abnormal spikes occur
+When analytics runs
+Then alerts are generated with evidence windows
+*Task Set:*
+Compute aggregate time-series metrics from turnout + ledger height
+Apply threshold-based detection and smoothing to reduce noise
+Emit alerts with time windows and associated block ranges
+Export anomaly report
+*Constraints:*
+Aggregate-only analytics (no deanonymization risk)
+
+---
+
+*US-74*
+*User Story:* As an investigator, I want an election replay simulator, so that the full election timeline can be reconstructed.
+*Acceptance Criteria:*
+Given logs and ledger events exist
+When replay simulation runs
+Then a chronological “what happened when” timeline is produced
+*Task Set:*
+Correlate audit logs + ledger event stream using timestamps/correlation IDs
+Order events deterministically into a timeline view
+Filter timeline by subsystem (auth/ledger/tally/admin)
+Export signed replay bundle (timeline + hashes)
+*Constraints:*
+Timeline must not contain identity→token linkage
+
+---
+
+*US-75*
+*User Story:* As an observer, I want read-only observer mode, so that I can monitor without risking modification.
+*Acceptance Criteria:*
+Given an observer role is used
+When write actions are attempted
+Then they are denied and logged
+*Task Set:*
+Define observer role with read-only permissions
+Enforce RBAC on all endpoints and UI controls
+Disable mutation features in UI routes for observer sessions
+Log denied write attempts as security events
+
+---
+
+*US-76*
+*User Story:* As a citizen observer, I want a one-click public verification portal, so that I can verify results easily.
+*Acceptance Criteria:*
+Given public evidence is published
+When verification is executed
+Then the portal outputs deterministic verified/not-verified with reasons
+*Task Set:*
+Fetch evidence bundle (headers, snapshot, proof, result signature)
+Verify ledger integrity, tally proof, and result signature in one pipeline
+Cache large artifacts and stream progress to avoid timeouts
+Export verification report artifact
+*Constraints:*
+Uses only public artifacts (no private keys/shares)

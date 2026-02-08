@@ -166,4 +166,21 @@ class TallyingSession(Base):
     completed_at = Column(DateTime)
     error_message = Column(Text)
 
+
     election = relationship("Election", back_populates="tallying_session")
+
+
+class Incident(Base):
+    __tablename__ = "incidents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    incident_id = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    severity = Column(String(50), nullable=False)  # low, medium, high, critical
+    status = Column(String(50), default="open")  # open, triage, mitigated, resolved
+    reported_by = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolution_notes = Column(Text)
+

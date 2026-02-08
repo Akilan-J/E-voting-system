@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { mockDataAPI, tallyingAPI, resultsAPI } from '../services/api';
 import './TestingPanel.css';
@@ -6,6 +7,9 @@ function TestingPanel() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+
+  // Modal state
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -25,8 +29,14 @@ function TestingPanel() {
     setMessage(null);
     try {
       await action();
+      // Add a small delay to ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       setMessage({ type: 'success', text: successMsg });
       await loadStats();
+
+      // Auto-clear message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.detail || 'Action failed' });
     }
@@ -67,12 +77,22 @@ function TestingPanel() {
     );
   };
 
-  const resetDatabase = async () => {
-    if (!window.confirm('Reset entire database? This will delete all votes and results.')) return;
+  // Reset Logic with Modal
+  const requestReset = () => {
+    setMessage(null);
+    setShowResetConfirm(true);
+  };
+
+  const confirmReset = async () => {
+    setShowResetConfirm(false);
     await handleAction(
       () => mockDataAPI.resetDatabase(),
       'Database reset successfully!'
     );
+  };
+
+  const cancelReset = () => {
+    setShowResetConfirm(false);
   };
 
   return (
@@ -116,12 +136,12 @@ function TestingPanel() {
         <div className="workflow-section">
           <h3>🚀 Test Workflow</h3>
           <p>Follow these steps in order:</p>
-          
+
           <div className="workflow-steps">
             <div className="workflow-step">
               <span className="step-number">1</span>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={setupTrustees}
                 disabled={loading}
               >
@@ -131,8 +151,8 @@ function TestingPanel() {
 
             <div className="workflow-step">
               <span className="step-number">2</span>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={generateVotes}
                 disabled={loading}
               >
@@ -142,8 +162,8 @@ function TestingPanel() {
 
             <div className="workflow-step">
               <span className="step-number">3</span>
-              <button 
-                className="btn btn-success" 
+              <button
+                className="btn btn-success"
                 onClick={startTallying}
                 disabled={loading || !stats || stats.votes?.total === 0}
               >
@@ -160,8 +180,8 @@ function TestingPanel() {
 
             <div className="workflow-step">
               <span className="step-number">5</span>
-              <button 
-                className="btn btn-success" 
+              <button
+                className="btn btn-success"
                 onClick={finalizeTally}
                 disabled={loading || !stats?.tallying?.started}
               >
@@ -171,8 +191,8 @@ function TestingPanel() {
 
             <div className="workflow-step">
               <span className="step-number">6</span>
-              <button 
-                className="btn btn-secondary" 
+              <button
+                className="btn btn-secondary"
                 onClick={publishToBlockchain}
                 disabled={loading}
               >
@@ -184,9 +204,9 @@ function TestingPanel() {
 
         <div className="danger-zone">
           <h3>⚠️ Danger Zone</h3>
-          <button 
-            className="btn btn-danger" 
-            onClick={resetDatabase}
+          <button
+            className="btn btn-danger"
+            onClick={requestReset}
             disabled={loading}
           >
             🗑️ Reset Database
@@ -195,14 +215,28 @@ function TestingPanel() {
         </div>
 
         <div className="utility-section">
-          <button 
-            className="btn btn-secondary" 
+          <button
+            className="btn btn-secondary"
             onClick={loadStats}
             disabled={loading}
           >
             🔄 Refresh Status
           </button>
         </div>
+
+        {/* Custom Confirmation Modal */}
+        {showResetConfirm && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3>⚠️ Confirm Reset</h3>
+              <p>Reset entire database? This will delete all votes and results.</p>
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={cancelReset}>Cancel</button>
+                <button className="btn btn-danger" onClick={confirmReset}>Yes, Reset Everything</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

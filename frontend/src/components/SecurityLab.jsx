@@ -1,0 +1,316 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { securityAPI, resultsAPI } from '../services/api';
+import './SecurityLab.css';
+
+const SecurityLab = () => {
+    const [logs, setLogs] = useState([]);
+    const [anomalies, setAnomalies] = useState([]);
+    const [scenario, setScenario] = useState('replay_attack');
+    const [simulating, setSimulating] = useState(false);
+    const [electionId, setElectionId] = useState(null);
+    const [replayStats, setReplayStats] = useState(null);
+    const [selectedAnomaly, setSelectedAnomaly] = useState(null);
+
+    const handleInvestigate = (anomaly) => {
+        setSelectedAnomaly(anomaly);
+    };
+
+    const closeInvestigation = () => {
+        setSelectedAnomaly(null);
+    };
+
+    const terminalRef = useRef(null);
+
+    useEffect(() => {
+        // Init: get active election and mock anomalies
+        resultsAPI.getAll().then(res => {
+            if (res.data && res.data.length > 0) setElectionId(res.data[0].election_id);
+        });
+
+        loadAnomalies();
+    }, []);
+
+    // Auto-scroll terminal
+    useEffect(() => {
+        if (terminalRef.current) {
+            terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+        }
+    }, [logs]);
+
+    const loadAnomalies = async () => {
+        try {
+            const res = await securityAPI.getAnomalies();
+            setAnomalies(res.data);
+        } catch (err) {
+            addLog("Error fetching anomalies: " + err.message, "error");
+        }
+    };
+
+    const addLog = (msg, type = "info") => {
+        const timestamp = new Date().toLocaleTimeString();
+        setLogs(prev => [...prev, { msg, type, time: timestamp }]);
+    };
+
+    const handleSimulation = async () => {
+        setSimulating(true);
+        addLog(`Initiating scenario: ${scenario}...`, "warn");
+
+        try {
+            const res = await securityAPI.simulateThreat({
+                scenario_type: scenario,
+                intensity: "high",
+                target_component: "api_gateway"
+            });
+
+            // Append simulation logs
+            res.data.logs.forEach(log => {
+                const type = log.includes("WARN") ? "warn" : log.includes("ALERT") ? "error" : "info";
+                addLog(log, type);
+            });
+
+            if (res.data.detected_by_ids) {
+                addLog("✅ Threat neutralized by IDS", "success");
+            }
+
+            // Refresh anomalies if new ones generated
+            loadAnomalies();
+
+        } catch (err) {
+            addLog("Simulation failed to execute", "error");
+        }
+        setSimulating(false);
+    };
+
+    const runLedgerAudit = async () => {
+        if (!electionId) return;
+        addLog("Starting full ledger replay & hash verification...", "info");
+        setReplayStats({ progress: 0, status: 'Auditing...' });
+
+        try {
+            // Fake progress for visual effect
+            let p = 0;
+            const interval = setInterval(() => {
+                p += 10;
+                if (p > 90) clearInterval(interval);
+                setReplayStats(prev => ({ ...prev, progress: p }));
+            }, 200);
+
+            const res = await securityAPI.replayLedger(electionId);
+
+            clearInterval(interval);
+            setReplayStats({
+                progress: 100,
+                status: res.data.status === 'clean' ? 'Integrity Verified' : 'Corruption Detected',
+                data: res.data
+            });
+
+            if (res.data.status === 'clean') {
+                addLog(`Audit Complete: ${res.data.total_blocks} blocks verified. Tip: ${res.data.tip_hash.substring(0, 10)}...`, "success");
+            } else {
+                addLog(`Audit Failed: ${res.data.invalid_blocks} corrupted blocks found!`, "error");
+            }
+
+        } catch (err) {
+            addLog("Audit process failed connection", "error");
+            setReplayStats(null);
+        }
+    };
+
+    return (
+        <div className="security-lab p-4">
+            <div className="security-header">
+                <h2>🧪 Security & Threat Lab (US-68, 69)</h2>
+                <div className="status-badge">System Status: <span className="text-green-600 font-bold">ARMED</span></div>
+            </div>
+
+            <div className="lab-grid">
+                {/* Threat Simulator */}
+                <div className="security-card card-warning">
+                    <h3>⚡ Threat Simulator</h3>
+                    <div className="simulation-controls">
+                        <p className="text-sm text-gray-500 mb-2">Inject synthetic attacks to test system resilience.</p>
+                        <div className="control-group">
+                            <select
+                                className="scenario-select"
+                                value={scenario}
+                                onChange={(e) => setScenario(e.target.value)}
+                            >
+                                <option value="replay_attack">Replay Attack (US-68)</option>
+                                <option value="ddos">DDoS / Traffic Burst</option>
+                                <option value="consensus_stall">Consensus Liveness Stall</option>
+                            </select>
+                            <button
+                                className="trigger-btn"
+                                onClick={handleSimulation}
+                                disabled={simulating}
+                            >
+                                {simulating ? 'Injecting...' : 'Inject Threat'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Ledger Audit */}
+                <div className={`security-card card-audit ${replayStats?.status === 'Auditing...' ? 'audit-active' : ''}`}>
+                    <h3>🔍 Deep Ledger Audit (US-64)</h3>
+                    <p className="text-sm text-gray-500 mb-6">Recompute cryptographic hash chain from genesis block to verify immutable integrity.</p>
+
+                    {!replayStats || replayStats.status === 'Auditing...' ? (
+                        <>
+                            <button
+                                className="audit-btn"
+                                onClick={runLedgerAudit}
+                                disabled={!electionId || (replayStats && replayStats.status === 'Auditing...')}
+                            >
+                                {replayStats?.status === 'Auditing...' ? (
+                                    <>
+                                        <span className="spinner"></span> Auditing Ledger...
+                                    </>
+                                ) : (
+                                    <>
+                                        🚀 Run Full Replay Audit
+                                    </>
+                                )}
+                            </button>
+
+                            {replayStats && replayStats.status === 'Auditing...' && (
+                                <div className="progress-container">
+                                    <div className="flex justify-between text-sm font-bold mb-2 text-violet-700">
+                                        <span>Scanning Blockchain...</span>
+                                        <span>{replayStats.progress}%</span>
+                                    </div>
+                                    <div className="progress-bar">
+                                        <div className="progress-fill" style={{ width: `${replayStats.progress}%` }}></div>
+                                    </div>
+                                    <div className="text-xs text-center mt-2 text-gray-500">Verifying Merkle Roots & Previous Hashes</div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="audit-result-container">
+                            {/* Result State */}
+                            <div className={`verified-badge ${replayStats.status === 'Integrity Verified' ? '' : 'error'}`}>
+                                {replayStats.status === 'Integrity Verified' ? '✅ Integrity Verified' : '❌ Corruption Detected'}
+                            </div>
+
+                            {replayStats.data && (
+                                <div className="space-y-3">
+                                    <div className="flex justify-between text-sm border-b pb-2">
+                                        <span className="text-gray-500">Total Blocks Verified</span>
+                                        <span className="font-bold">{replayStats.data.total_blocks}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm border-b pb-2">
+                                        <span className="text-gray-500">Valid Transactions</span>
+                                        <span className="font-bold">{replayStats.data.valid_blocks}</span>
+                                    </div>
+
+                                    <div className="hash-box">
+                                        <span className="hash-label">LATEST TIP HASH</span>
+                                        <div className="hash-value">{replayStats.data.tip_hash}</div>
+                                    </div>
+
+                                    <button
+                                        className="text-xs text-violet-600 hover:text-violet-800 underline w-full text-center mt-2"
+                                        onClick={() => setReplayStats(null)}
+                                    >
+                                        Run New Audit
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Anomaly Monitor */}
+                <div className="security-card card-info">
+                    <h3>📡 Active Anomalies (US-73)</h3>
+                    <div className="anomaly-list">
+                        {anomalies.length === 0 ? (
+                            <p className="text-center text-gray-400 py-4">No active anomalies detected.</p>
+                        ) : (
+                            anomalies.map((anom, i) => (
+                                <div className="anomaly-item" key={i}>
+                                    <div>
+                                        <div className="anomaly-title">⚠️ {anom.type}</div>
+                                        <div className="anomaly-meta">{new Date(anom.timestamp).toLocaleTimeString()} • {anom.severity.toUpperCase()}</div>
+                                    </div>
+                                    <button
+                                        className="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                                        onClick={() => handleInvestigate(anom)}
+                                    >
+                                        Investigate
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Live Terminal */}
+            <h3 className="text-lg font-bold mb-2 text-gray-700">🖥️ Security Event Stream (US-67)</h3>
+            <div className="terminal-window" ref={terminalRef}>
+                <div className="terminal-line text-gray-500">System initialized. Monitoring active...</div>
+                {logs.map((log, i) => (
+                    <div key={i} className={`terminal-line log-${log.type}`}>
+                        <span className="opacity-50">[{log.time}]</span> {log.msg}
+                    </div>
+                ))}
+                {logs.length === 0 && <div className="terminal-line italic opacity-50">Waiting for events...</div>}
+                <div className="terminal-line animate-pulse">_</div>
+            </div>
+
+            {/* Investigation Modal */}
+            {selectedAnomaly && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3>🕵️ Anomaly Investigation</h3>
+                            <button onClick={closeInvestigation} className="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+                                <div className="text-xs text-red-500 uppercase font-bold text-center tracking-wider mb-1">Threat Level Detected</div>
+                                <div className="text-center text-2xl font-bold text-red-700">{selectedAnomaly.severity.toUpperCase()}</div>
+                            </div>
+
+                            <div className="detail-row">
+                                <span className="text-gray-500 text-sm">Anomaly Type</span>
+                                <span className="font-mono text-sm font-bold">{selectedAnomaly.type}</span>
+                            </div>
+
+                            <div className="detail-row">
+                                <span className="text-gray-500 text-sm">Detected At</span>
+                                <span className="text-sm">{new Date(selectedAnomaly.timestamp).toLocaleString()}</span>
+                            </div>
+
+                            <div className="detail-row">
+                                <span className="text-gray-500 text-sm">Source IP</span>
+                                <span className="font-mono text-sm">192.168.1.X (Internal)</span>
+                            </div>
+
+                            <div className="mt-4">
+                                <span className="text-gray-500 text-sm block mb-2">Automated Analysis</span>
+                                <div className="bg-gray-900 text-green-400 p-3 rounded text-xs font-mono">
+                                    {`> Analyzing traffic pattern...\n> Signature match: ${selectedAnomaly.type}\n> Action: Traffic throttled & IP flagged.\n> Recommendation: Review firewall rules.`}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-actions mt-6">
+                            <button className="btn btn-secondary" onClick={closeInvestigation}>Dismiss</button>
+                            <button className="btn btn-primary" onClick={() => {
+                                addLog(`Investigation case opened for ${selectedAnomaly.type}`, "info");
+                                closeInvestigation();
+                            }}>Open Formal Case</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default SecurityLab;

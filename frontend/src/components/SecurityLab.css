@@ -1,0 +1,341 @@
+/* SecurityLab.css */
+
+.security-lab {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.security-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.security-header h2 {
+    color: #1f2937;
+    font-size: 1.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.lab-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+/* Control Panels */
+.security-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    transition: var(--transition-smooth);
+    animation: scaleIn 0.5s ease-out both;
+}
+
+.security-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+}
+
+.security-card h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding-bottom: 0.8rem;
+}
+
+.card-warning {
+    border-top: 4px solid #ef4444;
+}
+
+.card-info {
+    border-top: 4px solid #3b82f6;
+}
+
+.card-audit {
+    border-top: 4px solid #8b5cf6;
+}
+
+/* Threat Controls */
+.simulation-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.control-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.scenario-select {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+}
+
+.trigger-btn {
+    background: #ef4444;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.trigger-btn:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.trigger-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Live Terminal */
+.terminal-window {
+    background: #09090b;
+    /* Pitch black for improved contrast */
+    border-radius: 12px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    height: 300px;
+    overflow-y: auto;
+    color: #00ff41;
+    /* Classic Matrix Green */
+    font-size: 0.85rem;
+    border: 1px solid #334155;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9);
+    position: relative;
+}
+
+/* Optional Scanline Effect */
+.terminal-window::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+}
+
+.terminal-line {
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.log-warn {
+    color: #facc15;
+}
+
+.log-error {
+    color: #f87171;
+}
+
+.log-success {
+    color: #4ade80;
+}
+
+/* Anomaly List */
+.anomaly-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.anomaly-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: #fef2f2;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+}
+
+.anomaly-title {
+    font-weight: 600;
+    color: #991b1b;
+    font-size: 0.9rem;
+}
+
+.anomaly-meta {
+    font-size: 0.8rem;
+    color: #b91c1c;
+}
+
+/* Replay Progress */
+.replay-status {
+    margin-top: 1rem;
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #8b5cf6;
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.25rem;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #334155;
+}
+
+/* Deep Ledger Audit Specifics */
+.card-audit {
+    border-top: 4px solid #8b5cf6;
+    /* Violet/Purple */
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.8), rgba(139, 92, 246, 0.1));
+}
+
+.audit-active {
+    border-color: #d8b4fe;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2);
+}
+
+.audit-btn {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    color: white;
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+}
+
+.audit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+}
+
+.audit-btn:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.verified-badge {
+    background: #ecfdf5;
+    color: #059669;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid #a7f3d0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.verified-badge.error {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+.hash-box {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    margin-top: 1rem;
+    border: 1px solid #334155;
+    position: relative;
+    overflow: hidden;
+}
+
+.hash-label {
+    color: #94a3b8;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+.hash-value {
+    color: #a5f3fc;
+    word-break: break-all;
+}
+
+.progress-container {
+    margin-top: 1.5rem;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.scan-line {
+    height: 4px;
+    width: 100%;
+    background: linear-gradient(to right, transparent, #8b5cf6, transparent);
+    animation: scan 1.5s linear infinite;
+    margin-bottom: 0.5rem;
+}
+
+@keyframes scan {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
