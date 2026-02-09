@@ -5,6 +5,8 @@ import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-reac
 import './VoterAccess.css';
 
 const VoterAccess = () => {
+  const [loginMode, setLoginMode] = useState('voter'); // 'voter' or 'admin'
+
   const [step, setStep] = useState('login'); // login, mfa, dashboard
   const [identity, setIdentity] = useState('');
   const [token, setToken] = useState(null);
@@ -26,6 +28,8 @@ const VoterAccess = () => {
     setMessages(prev => [...prev, msg]);
     console.log(msg);
   };
+
+
 
   // Fetch election details on mount
   React.useEffect(() => {
@@ -209,38 +213,58 @@ const VoterAccess = () => {
     );
   }
 
+  // ... (rest of functions)
+
   // Login View
   if (step === 'login') {
     return (
       <div className="login-container">
         <div className="login-card">
           <div className="brand-section">
-            <div className="logo-icon">🗳️</div>
-            <h1 className="login-title">National E-Voting Portal</h1>
-            <p className="login-subtitle">Secure Identity Verification System</p>
+            <div className="logo-icon">{loginMode === 'voter' ? '🗳️' : '🛡️'}</div>
+            <h1 className="login-title">
+              {loginMode === 'voter' ? 'National E-Voting Portal' : 'Administrative Access'}
+            </h1>
+            <p className="login-subtitle">
+              {loginMode === 'voter' ? 'Secure Identity Verification System' : 'Restricted System Access -- Authorized Personnel Only'}
+            </p>
           </div>
 
           <div className="login-form">
             <div className="input-group">
-              <label className="input-label">Digital ID / Email</label>
+              <label className="input-label">
+                {loginMode === 'voter' ? 'Digital ID / Email' : 'Admin / Trustee Username'}
+              </label>
               <input
                 className="input-field"
                 type="text"
-                placeholder="Enter your Digital ID"
+                placeholder={loginMode === 'voter' ? "Enter your Digital ID" : "username"}
                 value={identity}
                 onChange={e => setIdentity(e.target.value)}
               />
             </div>
 
-            <button className="auth-btn" onClick={handleLogin}>
+            <button className={`auth-btn ${loginMode === 'admin' ? 'admin-theme' : ''}`} onClick={handleLogin}>
               <Lock className="auth-icon" />
-              Authenticate with OIDC
+              {loginMode === 'voter' ? 'Authenticate with OIDC' : 'System Login'}
             </button>
           </div>
 
           <div className="admin-link">
-            <button className="admin-login-btn">Login as Administrator</button>
+            <button className="admin-login-btn" onClick={() => setLoginMode(loginMode === 'voter' ? 'admin' : 'voter')}>
+              {loginMode === 'voter' ? 'Login as Administrator / Trustee' : 'Return to Voter Login'}
+            </button>
           </div>
+
+          {loginMode === 'admin' && (
+            <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>
+              <p>Demo Config (Hardcoded):</p>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                <li>Admin: <code>admin123</code></li>
+                <li>Trustee: <code>trustee1</code></li>
+              </ul>
+            </div>
+          )}
 
           <div className="footer-badge">
             <Shield className="footer-icon" />

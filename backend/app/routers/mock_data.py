@@ -306,11 +306,13 @@ def setup_system(
     1. Create default election if none exists
     2. Populate Citizen database (source of truth)
     3. Setup Trustees for threshold cryptography
+    4. Setup Admin and Trustee Users (US-6 RBAC)
     """
     from app.models.database import Election
-    from app.models.auth_models import Citizen
+    from app.models.auth_models import Citizen, User
     import hashlib
     
+    # ... (Election creation logic remains) ...
     # 1. Ensure Election exists
     election = db.query(Election).first()
     if not election:
@@ -329,8 +331,7 @@ def setup_system(
         db.add(election)
         db.commit()
     
-    # 2. Populate Citizen Database (Simulated Aadhaar)
-    # Clear old citizens first if any? No, just add defaults
+    # 2. Populate Citizen Database
     test_credentials = ["123456789012", "987654321098", "555566667777"]
     citizens_added = 0
     for cred in test_credentials:
@@ -342,15 +343,31 @@ def setup_system(
                 is_eligible_voter=True
             ))
             citizens_added += 1
-    
-    # 3. Setup Trustees
+            
+    # 2.5 Setup ADMIN and TRUSTEE users for RBAC
+    # Admin
+    admin_cred = "admin123"
+    admin_hash = hashlib.sha256(admin_cred.encode()).hexdigest()
+    if not db.query(User).filter(User.identity_hash == admin_hash).first():
+        db.add(User(identity_hash=admin_hash, role="admin"))
+        citizens_added += 1 # Counting users added too
+        
+    # Trustees (trustee1..5)
+    for i in range(1, 6):
+        t_cred = f"trustee{i}"
+        t_hash = hashlib.sha256(t_cred.encode()).hexdigest()
+        if not db.query(User).filter(User.identity_hash == t_hash).first():
+            db.add(User(identity_hash=t_hash, role="trustee"))
+            citizens_added += 1
+
+    # 3. Setup Trustees (Crypto Keys)
     trustees_result = setup_test_trustees(db)
     
     db.commit()
     
     return {
         "success": True,
-        "message": f"System initialized. {citizens_added} citizens added.",
+        "message": f"System initialized. Added voters, admin (admin123), and trustees (trustee1-5).",
         "trustees": trustees_result
     }
 

@@ -20,7 +20,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     f"postgresql://{os.getenv('POSTGRES_USER', 'admin')}:"
     f"{os.getenv('POSTGRES_PASSWORD', 'secure_password')}@"
-    f"{os.getenv('POSTGRES_HOST', 'localhost')}:"
+    f"{os.getenv('POSTGRES_HOST', '127.0.0.1')}:"
     f"{os.getenv('POSTGRES_PORT', '5432')}/"
     f"{os.getenv('POSTGRES_DB', 'evoting')}"
 )
