@@ -421,3 +421,35 @@ def setup_test_trustees(
         "total_trustees": len(trustees),
         "ready_for_tallying": trustees_updated >= 3
     }
+
+
+@router.post("/generate-zk-proof")
+def generate_mock_zk_proof(
+    election_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a valid Mock ZK Proof Bundle for a completed election.
+    Useful for testing US-63 without full cryptographic implementation.
+    """
+    election = db.query(Election).filter(Election.election_id == election_id).first()
+    if not election:
+        raise HTTPException(status_code=404, detail="Election not found")
+        
+    return {
+        "election_id": election_id,
+        "proof_bundle": {
+            "protocol": "Chaum-Pedersen-Log-Eq",
+            "curve": "secp256k1",
+            "commitment": {
+                "A": "029a8f...", 
+                "B": "031b2c..."
+            },
+            "challenge": "c89f2a...",
+            "response": "7d3e1f...",
+            "zero_knowledge_proofs": [
+                {"vote_index": 0, "status": "valid", "proof": "mock_proof_x7z"},
+                {"vote_index": 1, "status": "valid", "proof": "mock_proof_y9a"}
+            ]
+        }
+    }

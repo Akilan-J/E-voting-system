@@ -17,7 +17,11 @@ class RateLimiter:
         self.seconds = seconds
 
     async def __call__(self, request: Request):
-        client_ip = request.client.host
+        if not request.client or not request.client.host:
+            # Fallback for tests or proxies
+            client_ip = "127.0.0.1"
+        else:
+            client_ip = request.client.host
         current_time = time.time()
         
         # Get history for this IP

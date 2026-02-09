@@ -63,6 +63,14 @@ class LedgerService:
     
     def _validate_block_structure(self, block: LedgerBlock, db: Session) -> Tuple[bool, str]:
         """US-40: Validate block structure and rules"""
+        # Check hash length (SHA-256 = 64 hex chars)
+        if len(block.block_hash) != 64 or len(block.prev_hash) != 64 or len(block.merkle_root) != 64:
+            return (False, "invalid_hash_length")
+
+        # Check entry count
+        if block.entry_count > self.max_entries_per_block:
+            return (False, "too_many_entries")
+
         # Check height monotonicity
         if block.height < 0:
             return (False, "invalid_height")
@@ -83,11 +91,7 @@ class LedgerService:
         # Check entry count
         if block.entry_count > self.max_entries_per_block:
             return (False, "too_many_entries")
-        
-        # Check hash length (SHA-256 = 64 hex chars)
-        if len(block.block_hash) != 64 or len(block.prev_hash) != 64 or len(block.merkle_root) != 64:
-            return (False, "invalid_hash_length")
-        
+
         return (True, "valid")
 
     def _compute_merkle_root(self, entries: List[LedgerEntry]) -> str:

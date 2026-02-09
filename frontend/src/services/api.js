@@ -100,6 +100,7 @@ export const mockDataAPI = {
   getElectionStats: (electionId) =>
     api.get(`/mock/election-stats${electionId ? `?election_id=${electionId}` : ''}`),
   setupTrustees: () => api.post('/mock/setup-trustees'),
+  generateZKProof: (electionId) => api.post(`/mock/generate-zk-proof?election_id=${electionId}`),
 };
 
 // Health Check

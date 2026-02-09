@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { verificationAPI, resultsAPI } from '../services/api';
+import { verificationAPI, resultsAPI, mockDataAPI } from '../services/api';
 import './VerificationPortal.css';
 
 const VerificationPortal = () => {
@@ -43,6 +43,19 @@ const VerificationPortal = () => {
         setLoading(false);
     };
 
+    const handleGenerateProof = async () => {
+        if (!electionId) return;
+        setLoading(true);
+        try {
+            const res = await mockDataAPI.generateZKProof(electionId);
+            setProofJson(JSON.stringify(res.data, null, 2));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to generate proof. Ensure election is COMPLETED.");
+        }
+        setLoading(false);
+    };
+
     const handleProofVerify = async () => {
         if (!proofJson || !electionId) return;
 
@@ -72,7 +85,7 @@ const VerificationPortal = () => {
 
             <div className="portal-grid">
                 {/* Receipt Verifier */}
-                <div className={`verifier-card ${activeTab === 'receipt' ? 'ring-2 ring-indigo-500' : ''}`}
+                <div className={`section-card verifier-card ${activeTab === 'receipt' ? 'ring-2' : ''}`}
                     onClick={() => setActiveTab('receipt')}>
                     <h3>🧾 Voter Receipt Validator (US-62)</h3>
                     <p className="verifier-desc">
@@ -100,7 +113,7 @@ const VerificationPortal = () => {
                 </div>
 
                 {/* ZK Proof Verifier */}
-                <div className={`verifier-card ${activeTab === 'proof' ? 'ring-2 ring-indigo-500' : ''}`}
+                <div className={`section-card verifier-card ${activeTab === 'proof' ? 'ring-2' : ''}`}
                     onClick={() => setActiveTab('proof')}>
                     <h3>⚡ Zero-Knowledge Proof Check (US-63)</h3>
                     <p className="verifier-desc">
@@ -108,10 +121,20 @@ const VerificationPortal = () => {
                     </p>
 
                     <div className="input-group">
-                        <label className="input-label">Proof Bundle (JSON)</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <label className="input-label" style={{ marginBottom: 0 }}>Proof Bundle (JSON)</label>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleGenerateProof(); }}
+                                className="generate-proof-btn"
+                                disabled={loading || !electionId}
+                            >
+                                <span>🔄</span> Generate Mock Proof
+                            </button>
+                        </div>
                         <textarea
                             className="verification-input"
-                            rows="4"
+                            rows="6"
                             placeholder='{"proof": "...", "public_inputs": "..."}'
                             value={proofJson}
                             onChange={(e) => setProofJson(e.target.value)}

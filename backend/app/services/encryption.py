@@ -283,5 +283,8 @@ class HomomorphicEncryptionService:
         }
 
 
+import os
+
 # Global instance
-encryption_service = HomomorphicEncryptionService()
+key_size = int(os.getenv("KEY_SIZE", 2048))
+encryption_service = HomomorphicEncryptionService(key_size=key_size)

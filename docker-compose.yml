@@ -13,7 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-evoting}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-evoting}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +27,7 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -62,7 +62,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import http.client; c=http.client.HTTPConnection('localhost',8000); c.request('GET','/health'); exit(0 if c.getresponse().status==200 else 1)"]
+      test: [ "CMD", "python", "-c", "import http.client; c=http.client.HTTPConnection('localhost',8000); c.request('GET','/health'); exit(0 if c.getresponse().status==200 else 1)" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -80,6 +80,7 @@ services:
     environment:
       REACT_APP_API_URL: http://localhost:8000/api
       REACT_APP_WS_URL: ws://localhost:8000/ws
+      PROXY_TARGET: http://backend:8000
     ports:
       - "3000:3000"
     volumes:
