@@ -342,6 +342,9 @@ def cast_vote(
     try:
         decoded = json.loads(req.vote_ciphertext)
         candidate_id = decoded.get("candidate_id")
+        timestamp = decoded.get("timestamp")
+        if candidate_id is None or timestamp is None:
+            raise HTTPException(status_code=400, detail="Invalid ballot payload")
         if candidate_id is not None:
             candidates = election.candidates if isinstance(election.candidates, list) else json.loads(election.candidates)
             valid_ids = {c["id"] for c in candidates}
@@ -381,6 +384,11 @@ def cast_vote(
         db.flush() # Ensure it's ready for FKs if any
         
         entry = ledger_service.submit_entry(db, req.election_id, vote_id, req.vote_ciphertext)
+        ciphertext_hash = hashlib.sha256(req.vote_ciphertext.encode()).hexdigest()
+        receipt_hash = hashlib.sha256(
+            f"{entry.entry_hash}|{ciphertext_hash}|{req.vote_proof or ''}".encode()
+        ).hexdigest()
+        enc_vote.receipt_hash = receipt_hash
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Ledger submission failed: {str(e)}")
@@ -400,6 +408,6 @@ def cast_vote(
     
     return {
         "status": "VOTE_ACCEPTED",
-        "receipt_hash": entry.entry_hash,
+        "receipt_hash": receipt_hash,
         "timestamp": datetime.utcnow()
     }

@@ -33,18 +33,30 @@ async def verify_receipt(
     """
     logger.info(f"Verifying receipt: {request.receipt_hash}")
     
+    vote = db.query(EncryptedVote).filter(
+        EncryptedVote.receipt_hash == request.receipt_hash,
+        EncryptedVote.election_id == request.election_id
+    ).first()
+    if not vote:
+        return ReceiptVerificationResponse(
+            receipt_hash=request.receipt_hash,
+            status="not_found"
+        )
+
     # 1. Fetch ledger entries to build the tree
-    entries = db.query(LedgerEntry).filter(LedgerEntry.election_id == request.election_id).order_by(LedgerEntry.created_at).all()
+    entries = db.query(LedgerEntry).filter(
+        LedgerEntry.election_id == request.election_id
+    ).order_by(LedgerEntry.created_at).all()
 
     found_entry = None
     leaves = []
     target_index = -1
     
-    # 2. Build Leaves and Find Target
+    # 2. Build Leaves and Find Target (lookup by vote_id)
     for index, entry in enumerate(entries):
         current_hash = entry.entry_hash
         leaves.append(current_hash)
-        if current_hash == request.receipt_hash:
+        if entry.vote_id == vote.vote_id:
             found_entry = entry
             target_index = index
 

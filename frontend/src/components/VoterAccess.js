@@ -21,6 +21,10 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
   const [voteReceipt, setVoteReceipt] = useState(null);
   const [blindedToken, setBlindedToken] = useState(null); // Valid token for voting
   const [signature, setSignature] = useState(null); // State for the signature
+  const [language, setLanguage] = useState('en');
+  const [showPreview, setShowPreview] = useState(false);
+  const [voteError, setVoteError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   React.useEffect(() => {
     setAuthRole(authRoleProp || localStorage.getItem('authRole'));
@@ -73,6 +77,52 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
       setElectionError(errorMessage);
       log(errorMessage);
     }
+  };
+
+  const uiText = {
+    en: {
+      votingBooth: 'Voting Booth',
+      selectCandidate: 'Select your candidate. Your vote will be anonymously cast.',
+      review: 'Review & Encrypt',
+      castVote: 'Cast Private Vote',
+      confirmVote: 'Confirm and Submit',
+      back: 'Go Back',
+      retry: 'Retry with new nonce',
+      languageLabel: 'Language'
+    },
+    ta: {
+      votingBooth: 'வாக்குப்பதிவு அறை',
+      selectCandidate: 'உங்கள் வேட்பாளரை தேர்வு செய்யவும். உங்கள் வாக்கு பாதுகாப்பாக பதிவாகும்.',
+      review: 'மீளாய்வு செய்து குறியாக்கம் செய்',
+      castVote: 'வாக்கை சமர்ப்பி',
+      confirmVote: 'உறுதிப்படுத்தி சமர்ப்பி',
+      back: 'மீண்டும் திரும்பு',
+      retry: 'புதிய நான்ஸ் கொண்டு மீண்டும் முயற்சி',
+      languageLabel: 'மொழி'
+    }
+  };
+
+  const resolveCandidates = () => {
+    if (!electionData) return [];
+    let candidates = electionData.candidates;
+    if (typeof candidates === 'string') {
+      try {
+        candidates = JSON.parse(candidates);
+      } catch (parseError) {
+        candidates = [];
+      }
+    }
+    return Array.isArray(candidates) ? candidates : [];
+  };
+
+  const buildVoteSubmission = async () => {
+    const votePayload = JSON.stringify({
+      candidate_id: selectedCandidate,
+      timestamp: Date.now()
+    });
+    const nonce = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const voteProof = await hashProof(`${electionId}|${nonce}|${votePayload}`);
+    return { votePayload, nonce, voteProof };
   };
 
   // Real OIDC Login
@@ -213,14 +263,9 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     }
 
     try {
-      // Simulate client-side encryption (In a real app, use Paillier/ElGamal JS lib here)
-      const votePayload = JSON.stringify({
-        candidate_id: selectedCandidate,
-        timestamp: Date.now()
-      });
-
-      const nonce = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
-      const voteProof = await hashProof(`${electionId}|${nonce}|${votePayload}`);
+      setVoteError(null);
+      setRetryCount(0);
+      const { votePayload, nonce, voteProof } = await buildVoteSubmission();
 
       const res = await axios.post('/api/voter/vote', {
         election_id: electionId,
@@ -237,7 +282,38 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
       setStep('voted');
       log(`Vote Cast Successfully! Receipt: ${res.data.receipt_hash.substring(0, 15)}...`);
     } catch (err) {
-      log(`Vote Error: ${err.response?.data?.detail || err.message}`);
+      const errorMessage = err.response?.data?.detail || err.message;
+      setVoteError(errorMessage);
+      setRetryCount((count) => count + 1);
+      log(`Vote Error: ${errorMessage}`);
+    }
+  };
+
+  const retryVote = async () => {
+    if (!selectedCandidate || !blindedToken || !signature) {
+      return;
+    }
+    try {
+      setVoteError(null);
+      const { votePayload, nonce, voteProof } = await buildVoteSubmission();
+      const res = await axios.post('/api/voter/vote', {
+        election_id: electionId,
+        token: blindedToken,
+        signature: signature,
+        vote_ciphertext: votePayload,
+        nonce,
+        vote_proof: voteProof,
+        client_integrity: 'demo-build-1',
+        version: 'v1'
+      });
+      setVoteReceipt(res.data);
+      setStep('voted');
+      log(`Vote Cast Successfully! Receipt: ${res.data.receipt_hash.substring(0, 15)}...`);
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || err.message;
+      setVoteError(errorMessage);
+      setRetryCount((count) => count + 1);
+      log(`Vote Error: ${errorMessage}`);
     }
   };
 
@@ -464,55 +540,87 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
         <div className="voting-booth" style={{ marginTop: '2rem', padding: '1.5rem', background: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           {electionData ? (
             <>
-              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ Voting Booth: {electionData.title}</h2>
-              <p style={{ color: '#666', marginBottom: '1.5rem' }}>Select your candidate. Your vote will be anonymously cast.</p>
+              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ {uiText[language]?.votingBooth || uiText.en.votingBooth}: {electionData.title}</h2>
+              <p style={{ color: '#666', marginBottom: '1rem' }}>{uiText[language]?.selectCandidate || uiText.en.selectCandidate}</p>
 
-              <div className="candidates-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                {(() => {
-                  let candidates = electionData.candidates;
-                  if (typeof candidates === 'string') {
-                    try {
-                      candidates = JSON.parse(candidates);
-                    } catch (parseError) {
-                      candidates = [];
-                    }
-                  }
-                  return Array.isArray(candidates) && candidates.length > 0 ? (
-                    candidates.map(c => (
-                      <label key={c.id} className={`candidate-card ${selectedCandidate === c.id ? 'selected' : ''}`}
-                        style={{
-                          padding: '1rem',
-                          border: selectedCandidate === c.id ? '2px solid #3b82f6' : '1px solid #eee',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          background: selectedCandidate === c.id ? '#eff6ff' : 'white',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="candidate"
-                          value={c.id}
-                          onChange={() => setSelectedCandidate(c.id)}
-                          style={{ marginRight: '10px' }}
-                        />
-                        <strong>{c.name}</strong>
-                        <div style={{ fontSize: '0.8rem', color: '#888' }}>{c.party}</div>
-                      </label>
-                    ))
-                  ) : (
-                    <p style={{ color: '#b45309' }}>No candidates available for this election.</p>
-                  );
-                })()}
+              <div className="language-row" style={{ marginBottom: '1.5rem' }}>
+                <label className="input-label" style={{ marginRight: '0.5rem' }}>{uiText[language]?.languageLabel || uiText.en.languageLabel}:</label>
+                <select className="input-field" value={language} onChange={(e) => setLanguage(e.target.value)} style={{ maxWidth: '220px' }}>
+                  <option value="en">English</option>
+                  <option value="ta">Tamil</option>
+                </select>
               </div>
 
-              <button
-                className="auth-btn"
-                style={{ marginTop: '2rem', background: '#ec4899', fontSize: '1.1rem' }}
-                onClick={castVote}
-              >
-                🔒 Cast Private Vote
-              </button>
+              {resolveCandidates().length > 0 ? (
+                <div className="candidates-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                  {resolveCandidates().map(c => (
+                    <label key={c.id} className={`candidate-card ${selectedCandidate === c.id ? 'selected' : ''}`}
+                      style={{
+                        padding: '1rem',
+                        border: selectedCandidate === c.id ? '2px solid #3b82f6' : '1px solid #eee',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: selectedCandidate === c.id ? '#eff6ff' : 'white',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="candidate"
+                        value={c.id}
+                        onChange={() => setSelectedCandidate(c.id)}
+                        aria-label={`Select ${c.name}`}
+                        style={{ marginRight: '10px' }}
+                      />
+                      <strong>{c.name}</strong>
+                      <div style={{ fontSize: '0.8rem', color: '#888' }}>{c.party}</div>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#b45309' }}>No candidates available for this election.</p>
+              )}
+
+              {!showPreview && (
+                <button
+                  className="auth-btn"
+                  style={{ marginTop: '2rem', background: '#2563eb', fontSize: '1.05rem' }}
+                  onClick={() => setShowPreview(true)}
+                >
+                  🔎 {uiText[language]?.review || uiText.en.review}
+                </button>
+              )}
+
+              {showPreview && (
+                <div className="preview-box" style={{ marginTop: '1.5rem' }}>
+                  <h4>Review Selection</h4>
+                  <p>
+                    Selected Candidate:{' '}
+                    <strong>
+                      {resolveCandidates().find((c) => c.id === selectedCandidate)?.name || 'Unknown'}
+                    </strong>
+                  </p>
+                  <div className="preview-actions">
+                    <button className="btn-secondary" onClick={() => setShowPreview(false)}>
+                      {uiText[language]?.back || uiText.en.back}
+                    </button>
+                    <button className="auth-btn" style={{ background: '#ec4899' }} onClick={castVote}>
+                      🔒 {uiText[language]?.confirmVote || uiText.en.confirmVote}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {voteError && (
+                <div className="preview-box" style={{ marginTop: '1.25rem' }}>
+                  <p style={{ color: '#b45309' }}>Vote error: {voteError}</p>
+                  {retryCount < 3 && (
+                    <button className="btn-secondary" onClick={retryVote}>
+                      {uiText[language]?.retry || uiText.en.retry}
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <>

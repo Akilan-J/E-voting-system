@@ -104,7 +104,37 @@ class TallyingService:
             raise ValueError("Election encryption parameters not found")
         
         # Aggregate encrypted votes using homomorphic addition
-        encrypted_vote_strings = [vote.encrypted_vote for vote in encrypted_votes]
+        candidates = election.candidates if isinstance(election.candidates, list) else json.loads(election.candidates)
+        num_candidates = len(candidates) if isinstance(candidates, list) else 0
+        if num_candidates < 1:
+            raise ValueError("Election has no candidates configured")
+
+        encrypted_vote_strings = []
+        for vote in encrypted_votes:
+            try:
+                # If already encrypted, keep as-is.
+                self.encryption._deserialize_encrypted_vector(vote.encrypted_vote)
+                encrypted_vote_strings.append(vote.encrypted_vote)
+                continue
+            except Exception:
+                pass
+
+            # Fallback for demo plaintext ballots (JSON with candidate_id)
+            try:
+                decoded = json.loads(vote.encrypted_vote)
+                candidate_id = decoded.get("candidate_id")
+                if candidate_id is None:
+                    logger.warning("Skipping vote %s: missing candidate_id", vote.vote_id)
+                    continue
+                encrypted_vote_strings.append(
+                    self.encryption.encrypt_vote(int(candidate_id), num_candidates)
+                )
+            except Exception as exc:
+                logger.warning("Skipping vote %s: %s", vote.vote_id, exc)
+                continue
+
+        if not encrypted_vote_strings:
+            raise ValueError("No valid votes to tally")
         
         try:
             aggregated_ciphertext = self.encryption.aggregate_votes(

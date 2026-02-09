@@ -88,6 +88,7 @@ class EncryptedVote(Base):
     election_id = Column(UUID(as_uuid=True), ForeignKey("elections.election_id", ondelete="CASCADE"))
     encrypted_vote = Column(Text, nullable=False)
     vote_proof = Column(Text)
+    receipt_hash = Column(String(255), index=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     is_tallied = Column(Boolean, default=False)
     nonce = Column(String(255), unique=True)
