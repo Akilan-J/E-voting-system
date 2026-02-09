@@ -12,6 +12,7 @@ const STATUS = {
 };
 
 function TestingPanel() {
+  const authRole = localStorage.getItem('authRole');
   const [stats, setStats] = useState(null);
   const [logs, setLogs] = useState([]);
   const [activeStep, setActiveStep] = useState(null);
@@ -259,6 +260,17 @@ function TestingPanel() {
       default: return 'step-pending';
     }
   };
+
+  if (authRole && authRole !== 'admin') {
+    return (
+      <div className="testing-panel-v2">
+        <div className="section-card">
+          <h3>Restricted Access</h3>
+          <p>Workflow testing tools are available to administrators only.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="testing-panel-v2">

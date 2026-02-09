@@ -47,6 +47,10 @@ def init_demo_data():
         from app.models.auth_models import Citizen, User
         import uuid
         import hashlib
+        import os
+        salt = os.getenv("IDENTITY_SALT", "")
+        def hash_identity(credential: str) -> str:
+            return hashlib.sha256(f"{salt}{credential}".encode()).hexdigest()
         
         # 1. Ensure Demo Election exists
         demo_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -73,7 +77,7 @@ def init_demo_data():
         # 2. Ensure Demo Citizens exist (Aadhaar Sim)
         test_credentials = ["123456789012", "987654321098", "555566667777"]
         for cred in test_credentials:
-            ident_hash = hashlib.sha256(cred.encode()).hexdigest()
+            ident_hash = hash_identity(cred)
             if not db.query(Citizen).filter(Citizen.identity_hash == ident_hash).first():
                 db.add(Citizen(
                     identity_hash=ident_hash,
@@ -84,16 +88,28 @@ def init_demo_data():
         # 3. Ensure Admin/Trustee Users exist (RBAC)
         # Admin
         admin_cred = "admin123"
-        admin_hash = hashlib.sha256(admin_cred.encode()).hexdigest()
+        admin_hash = hash_identity(admin_cred)
         if not db.query(User).filter(User.identity_hash == admin_hash).first():
             db.add(User(identity_hash=admin_hash, role="admin"))
+
+        # Security Engineer
+        sec_cred = "seceng123"
+        sec_hash = hash_identity(sec_cred)
+        if not db.query(User).filter(User.identity_hash == sec_hash).first():
+            db.add(User(identity_hash=sec_hash, role="security_engineer"))
+
+        # Auditor
+        aud_cred = "auditor123"
+        aud_hash = hash_identity(aud_cred)
+        if not db.query(User).filter(User.identity_hash == aud_hash).first():
+            db.add(User(identity_hash=aud_hash, role="auditor"))
             
         # Trustees (trustee1..5)
         for i in range(1, 6):
             t_cred = f"trustee{i}"
-            t_hash = hashlib.sha256(t_cred.encode()).hexdigest()
+            t_hash = hash_identity(t_cred)
             if not db.query(User).filter(User.identity_hash == t_hash).first():
-                db.add(User(identity_hash=t_hash, role="trustee"))
+                db.add(User(identity_hash=t_hash, role="trustee", trustee_vote_limit=50, trustee_votes_verified=0))
 
         db.commit()
     except Exception as e:

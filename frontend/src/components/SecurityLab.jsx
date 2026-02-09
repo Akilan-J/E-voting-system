@@ -4,6 +4,8 @@ import { securityAPI, resultsAPI } from '../services/api';
 import './SecurityLab.css';
 
 const SecurityLab = () => {
+    const authRole = localStorage.getItem('authRole');
+    const canOperate = authRole === 'security_engineer' || authRole === 'admin';
     const [logs, setLogs] = useState([]);
     const [anomalies, setAnomalies] = useState([]);
     const [scenario, setScenario] = useState('replay_attack');
@@ -120,7 +122,7 @@ const SecurityLab = () => {
     return (
         <div className="security-lab p-4">
             <div className="security-header">
-                <h2>🧪 Security & Threat Lab (US-68, 69)</h2>
+                <h2>🧪 Security & Threat Lab</h2>
                 <div className="status-badge">System Status: <span className="text-green-600 font-bold">ARMED</span></div>
             </div>
 
@@ -128,51 +130,59 @@ const SecurityLab = () => {
                 {/* Threat Simulator */}
                 <div className="security-card card-warning">
                     <h3>⚡ Threat Simulator</h3>
-                    <div className="simulation-controls">
-                        <p className="text-sm text-gray-500 mb-2">Inject synthetic attacks to test system resilience.</p>
-                        <div className="control-group">
-                            <select
-                                className="scenario-select"
-                                value={scenario}
-                                onChange={(e) => setScenario(e.target.value)}
-                            >
-                                <option value="replay_attack">Replay Attack (US-68)</option>
-                                <option value="ddos">DDoS / Traffic Burst</option>
-                                <option value="consensus_stall">Consensus Liveness Stall</option>
-                            </select>
-                            <button
-                                className="trigger-btn"
-                                onClick={handleSimulation}
-                                disabled={simulating}
-                            >
-                                {simulating ? 'Injecting...' : 'Inject Threat'}
-                            </button>
+                    {canOperate ? (
+                        <div className="simulation-controls">
+                            <p className="text-sm text-gray-500 mb-2">Inject synthetic attacks to test system resilience.</p>
+                            <div className="control-group">
+                                <select
+                                    className="scenario-select"
+                                    value={scenario}
+                                    onChange={(e) => setScenario(e.target.value)}
+                                >
+                                    <option value="replay_attack">Replay Attack</option>
+                                    <option value="ddos">DDoS / Traffic Burst</option>
+                                    <option value="consensus_stall">Consensus Liveness Stall</option>
+                                </select>
+                                <button
+                                    className="trigger-btn"
+                                    onClick={handleSimulation}
+                                    disabled={simulating}
+                                >
+                                    {simulating ? 'Injecting...' : 'Inject Threat'}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <p className="text-sm text-gray-500 mb-2">Simulation controls are restricted to security engineering.</p>
+                    )}
                 </div>
 
                 {/* Ledger Audit */}
                 <div className={`security-card card-audit ${replayStats?.status === 'Auditing...' ? 'audit-active' : ''}`}>
-                    <h3>🔍 Deep Ledger Audit (US-64)</h3>
+                    <h3>🔍 Deep Ledger Audit</h3>
                     <p className="text-sm text-gray-500 mb-6">Recompute cryptographic hash chain from genesis block to verify immutable integrity.</p>
 
                     {!replayStats || replayStats.status === 'Auditing...' ? (
                         <>
-                            <button
-                                className="audit-btn"
-                                onClick={runLedgerAudit}
-                                disabled={!electionId || (replayStats && replayStats.status === 'Auditing...')}
-                            >
-                                {replayStats?.status === 'Auditing...' ? (
-                                    <>
-                                        <span className="spinner"></span> Auditing Ledger...
-                                    </>
-                                ) : (
-                                    <>
-                                        🚀 Run Full Replay Audit
-                                    </>
-                                )}
-                            </button>
+                            {canOperate ? (
+                                <button
+                                    className="audit-btn"
+                                    onClick={runLedgerAudit}
+                                    disabled={!electionId || (replayStats && replayStats.status === 'Auditing...')}
+                                >
+                                    {replayStats?.status === 'Auditing...' ? (
+                                        <>
+                                            <span className="spinner"></span> Auditing Ledger...
+                                        </>
+                                    ) : (
+                                        <>
+                                            🚀 Run Full Replay Audit
+                                        </>
+                                    )}
+                                </button>
+                            ) : (
+                                <p className="text-sm text-gray-500 mb-2">Audit execution is restricted to security engineering.</p>
+                            )}
 
                             {replayStats && replayStats.status === 'Auditing...' && (
                                 <div className="progress-container">
@@ -210,12 +220,14 @@ const SecurityLab = () => {
                                         <div className="hash-value">{replayStats.data.tip_hash}</div>
                                     </div>
 
-                                    <button
-                                        className="text-xs text-violet-600 hover:text-violet-800 underline w-full text-center mt-2"
-                                        onClick={() => setReplayStats(null)}
-                                    >
-                                        Run New Audit
-                                    </button>
+                                    {canOperate && (
+                                        <button
+                                            className="text-xs text-violet-600 hover:text-violet-800 underline w-full text-center mt-2"
+                                            onClick={() => setReplayStats(null)}
+                                        >
+                                            Run New Audit
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -224,7 +236,7 @@ const SecurityLab = () => {
 
                 {/* Anomaly Monitor */}
                 <div className="security-card card-info">
-                    <h3>📡 Active Anomalies (US-73)</h3>
+                    <h3>📡 Active Anomalies</h3>
                     <div className="anomaly-list">
                         {anomalies.length === 0 ? (
                             <p className="text-center text-gray-400 py-4">No active anomalies detected.</p>
@@ -235,12 +247,14 @@ const SecurityLab = () => {
                                         <div className="anomaly-title">⚠️ {anom.type}</div>
                                         <div className="anomaly-meta">{new Date(anom.timestamp).toLocaleTimeString()} • {anom.severity.toUpperCase()}</div>
                                     </div>
-                                    <button
-                                        className="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50 transition-colors"
-                                        onClick={() => handleInvestigate(anom)}
-                                    >
-                                        Investigate
-                                    </button>
+                                    {canOperate && (
+                                        <button
+                                            className="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                                            onClick={() => handleInvestigate(anom)}
+                                        >
+                                            Investigate
+                                        </button>
+                                    )}
                                 </div>
                             ))
                         )}
@@ -249,7 +263,7 @@ const SecurityLab = () => {
             </div>
 
             {/* Live Terminal */}
-            <h3 className="text-lg font-bold mb-2 text-gray-700">🖥️ Security Event Stream (US-67)</h3>
+            <h3 className="text-lg font-bold mb-2 text-gray-700">🖥️ Security Event Stream</h3>
             <div className="terminal-window" ref={terminalRef}>
                 <div className="terminal-line text-gray-500">System initialized. Monitoring active...</div>
                 {logs.map((log, i) => (
@@ -301,10 +315,12 @@ const SecurityLab = () => {
 
                         <div className="modal-actions mt-6">
                             <button className="btn btn-secondary" onClick={closeInvestigation}>Dismiss</button>
-                            <button className="btn btn-primary" onClick={() => {
-                                addLog(`Investigation case opened for ${selectedAnomaly.type}`, "info");
-                                closeInvestigation();
-                            }}>Open Formal Case</button>
+                            {canOperate && (
+                                <button className="btn btn-primary" onClick={() => {
+                                    addLog(`Investigation case opened for ${selectedAnomaly.type}`, "info");
+                                    closeInvestigation();
+                                }}>Open Formal Case</button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -1,49 +1,121 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import timedelta
+import json
+from functools import lru_cache
 import pyotp
 import hashlib
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 from app.models.database import get_db
 from app.models.auth_models import User, SecurityLog
 from app.schemas.auth_schemas import (
-    LoginRequest, Token, MFASetupResponse, MFAVerifyRequest, UserResponse
+    LoginRequest, Token, MFASetupResponse, MFAVerifyRequest, UserResponse, RoleUpdateRequest
 )
 from app.utils.auth_utils import (
-    create_access_token, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
+    create_access_token, get_current_user, get_current_admin, ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from app.utils.auth import RateLimiter
+from typing import List
+from uuid import UUID
 
 router = APIRouter()
 
+HARD_CODED_CREDENTIALS_PATH = os.getenv(
+    "HARD_CODED_CREDENTIALS_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "config", "hardcoded_credentials.json")
+)
+
+
+@lru_cache(maxsize=1)
+def load_role_credentials() -> dict:
+    try:
+        with open(HARD_CODED_CREDENTIALS_PATH, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except FileNotFoundError as exc:
+        logger.error("Hardcoded credentials file missing: %s", HARD_CODED_CREDENTIALS_PATH)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Hardcoded credentials file missing"
+        ) from exc
+    except json.JSONDecodeError as exc:
+        logger.error("Hardcoded credentials file invalid JSON: %s", HARD_CODED_CREDENTIALS_PATH)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Hardcoded credentials file invalid"
+        ) from exc
+
+    if not isinstance(data, dict):
+        logger.error("Hardcoded credentials file must be a JSON object")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Hardcoded credentials file invalid"
+        )
+
+    return {str(key): str(value) for key, value in data.items()}
+
 def hash_identity(credential: str) -> str:
     # US-1: "Map verified claims to eligibility lookup key (hashed)"
-    # Simple SHA256 hash of the credential (e.g. National ID)
-    return hashlib.sha256(credential.encode()).hexdigest()
+    # Simple SHA256 hash of the credential (e.g. National ID) with optional salt
+    salt = os.getenv("IDENTITY_SALT", "")
+    return hashlib.sha256(f"{salt}{credential}".encode()).hexdigest()
 
 @router.post("/login", response_model=Token)
-def login(login_req: LoginRequest, db: Session = Depends(get_db)):
+def login(
+    login_req: LoginRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    rate_limit: bool = Depends(RateLimiter(times=10, seconds=60))
+):
     from app.models.auth_models import Citizen
-    identity_hash = hash_identity(login_req.credential)
+    role_credentials = load_role_credentials()
+    salted_hash = hash_identity(login_req.credential)
+    unsalted_hash = hashlib.sha256(login_req.credential.encode()).hexdigest()
+    identity_hashes = [salted_hash]
+    if unsalted_hash not in identity_hashes:
+        identity_hashes.append(unsalted_hash)
+
+    hardcoded_login = login_req.credential in role_credentials
+
+    if hardcoded_login:
+        forced_role = role_credentials[login_req.credential]
+        user = db.query(User).filter(User.identity_hash.in_(identity_hashes)).first()
+        if not user:
+            user = User(identity_hash=salted_hash, role=forced_role)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        else:
+            if user.role != forced_role:
+                user.role = forced_role
+                db.commit()
+        citizen = None
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid credentials"
+        )
     
     # 0. Check for privileged accounts (Admin/Trustee) first
-    user = db.query(User).filter(User.identity_hash == identity_hash).first()
-    if user and user.role in ["admin", "trustee", "auditor"]:
-        # Privileged users don't need to be in Citizen DB for this demo/system
-        pass
-    else:
-        # 1. For Voters: Check the Citizen source of truth (e.g. Aadhaar)
-        citizen = db.query(Citizen).filter(Citizen.identity_hash == identity_hash).first()
-        
-        if not citizen:
-            # Log failed attempt
-            logger.warning(f"Unauthorized login attempt with credential hash: {identity_hash[:10]}...")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail="Credential not found in national citizen database"
-            )
+    if not hardcoded_login:
+        user = db.query(User).filter(User.identity_hash.in_(identity_hashes)).first()
+        if user and user.role in ["admin", "trustee", "auditor", "security_engineer"]:
+            # Privileged users don't need to be in Citizen DB for this demo/system
+            pass
+        else:
+            # 1. For Voters: Check the Citizen source of truth (e.g. Aadhaar)
+            citizen = db.query(Citizen).filter(Citizen.identity_hash.in_(identity_hashes)).first()
+            
+            if not citizen:
+                # Log failed attempt
+                logger.warning(f"Unauthorized login attempt with credential hash: {salted_hash[:10]}...")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, 
+                    detail="Credential not found in national citizen database"
+                )
         
     # If not a privileged user, check eligibility
     if not user:
@@ -55,7 +127,7 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
 
     # 1.5 Risk Analysis
     from app.core.security_core import SecurityRiskAnalyzer, RiskLevel, ImmutableLogger
-    client_ip = "127.0.0.1" # In prod: request.client.host
+    client_ip = request.client.host if request.client else "127.0.0.1"
     # No user_id yet if login fails, but we use identity_hash?
     # Or just track IP risk.
     risk = SecurityRiskAnalyzer.calculate_risk(client_ip, "unknown", db)
@@ -65,11 +137,11 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
 
     # 2. Check if local user account exists, if not create it from Citizen data
     if not user:
-        user = db.query(User).filter(User.identity_hash == identity_hash).first()
+        user = db.query(User).filter(User.identity_hash.in_(identity_hashes)).first()
 
     if not user:
         # Map citizen to a local voter account
-        user = User(identity_hash=identity_hash, role="voter")
+        user = User(identity_hash=salted_hash, role="voter")
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -114,6 +186,49 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
     db.commit()
     
     return {"access_token": access_token, "token_type": "bearer", "role": user.role, "mfa_required": False}
+
+@router.get("/users", response_model=List[UserResponse])
+def list_users(
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    return db.query(User).order_by(User.created_at.desc()).all()
+
+@router.put("/users/{user_id}/role", response_model=UserResponse)
+def update_user_role(
+    user_id: UUID,
+    update: RoleUpdateRequest,
+    current_user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    allowed_roles = {"voter", "admin", "trustee", "auditor", "security_engineer"}
+    if update.role not in allowed_roles:
+        raise HTTPException(status_code=400, detail="Invalid role")
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.role = update.role
+    if update.role == "trustee":
+        user.trustee_vote_limit = update.trustee_vote_limit if update.trustee_vote_limit is not None else 100
+        if user.trustee_votes_verified is None:
+            user.trustee_votes_verified = 0
+    else:
+        user.trustee_vote_limit = None
+        user.trustee_votes_verified = 0
+
+    db.commit()
+    db.refresh(user)
+
+    log = SecurityLog(
+        user_id=current_user.user_id,
+        event_type="ROLE_UPDATED",
+        details=f"Updated user {user.user_id} role to {user.role}"
+    )
+    db.add(log)
+    db.commit()
+    return user
 
 @router.post("/mfa/setup", response_model=MFASetupResponse)
 def setup_mfa(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):

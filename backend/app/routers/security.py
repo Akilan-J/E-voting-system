@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 async def simulate_threat(
     request: ThreatSimulationRequest,
     db: Session = Depends(get_db),
-    role: str = Depends(RoleChecker(["admin"]))
+    role: str = Depends(RoleChecker(["admin", "security_engineer"]))
 ):
     """
     Inject simulated threats into the system to test resilience and monitoring.

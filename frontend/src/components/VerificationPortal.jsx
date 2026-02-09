@@ -4,6 +4,9 @@ import { verificationAPI, resultsAPI, mockDataAPI } from '../services/api';
 import './VerificationPortal.css';
 
 const VerificationPortal = () => {
+    const authRole = localStorage.getItem('authRole');
+    const canReceipt = authRole === 'voter' || authRole === 'admin';
+    const canProof = authRole === 'auditor' || authRole === 'security_engineer' || authRole === 'admin';
     const [receiptHash, setReceiptHash] = useState('');
     const [verificationResult, setVerificationResult] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -20,6 +23,14 @@ const VerificationPortal = () => {
         });
     }, []);
 
+    useEffect(() => {
+        if (canReceipt && !canProof) {
+            setActiveTab('receipt');
+        } else if (!canReceipt && canProof) {
+            setActiveTab('proof');
+        }
+    }, [canReceipt, canProof]);
+
     const handleReceiptVerify = async (e) => {
         e.preventDefault();
         if (!receiptHash || !electionId) return;
@@ -27,7 +38,16 @@ const VerificationPortal = () => {
         setLoading(true);
         setVerificationResult(null);
         try {
-            const res = await verificationAPI.verifyReceipt(receiptHash, electionId);
+            let receiptValue = receiptHash;
+            if (receiptHash.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(receiptHash);
+                    receiptValue = parsed?.receipt_hash || parsed?.receiptHash || receiptHash;
+                } catch (parseError) {
+                    receiptValue = receiptHash;
+                }
+            }
+            const res = await verificationAPI.verifyReceipt(receiptValue, electionId);
             setVerificationResult({
                 type: 'receipt',
                 data: res.data,
@@ -48,7 +68,8 @@ const VerificationPortal = () => {
         setLoading(true);
         try {
             const res = await mockDataAPI.generateZKProof(electionId);
-            setProofJson(JSON.stringify(res.data, null, 2));
+            const bundle = res.data?.proof_bundle || res.data;
+            setProofJson(JSON.stringify(bundle, null, 2));
         } catch (err) {
             console.error(err);
             alert("Failed to generate proof. Ensure election is COMPLETED.");
@@ -62,7 +83,8 @@ const VerificationPortal = () => {
         setLoading(true);
         setVerificationResult(null);
         try {
-            const proofBundle = JSON.parse(proofJson);
+            const parsed = JSON.parse(proofJson);
+            const proofBundle = parsed?.proof_bundle || parsed;
             const res = await verificationAPI.verifyZKProof(proofBundle, electionId);
             setVerificationResult({
                 type: 'proof',
@@ -85,70 +107,80 @@ const VerificationPortal = () => {
 
             <div className="portal-grid">
                 {/* Receipt Verifier */}
-                <div className={`section-card verifier-card ${activeTab === 'receipt' ? 'ring-2' : ''}`}
-                    onClick={() => setActiveTab('receipt')}>
-                    <h3>🧾 Voter Receipt Validator (US-62)</h3>
-                    <p className="verifier-desc">
-                        Paste your unique receipt hash to verify that your ballot was included in the ledger.
-                    </p>
+                {canReceipt && (
+                    <div className={`section-card verifier-card ${activeTab === 'receipt' ? 'ring-2' : ''}`}
+                        onClick={() => setActiveTab('receipt')}>
+                        <h3>🧾 Voter Receipt Validator</h3>
+                        <p className="verifier-desc">
+                            Paste your unique receipt hash to verify that your ballot was included in the ledger.
+                        </p>
 
-                    <form onSubmit={handleReceiptVerify}>
+                        <form onSubmit={handleReceiptVerify}>
+                            <div className="input-group">
+                                <label className="input-label">Receipt Hash</label>
+                                <input
+                                    className="verification-input"
+                                    placeholder="0x..."
+                                    value={receiptHash}
+                                    onChange={(e) => setReceiptHash(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                className="verify-btn"
+                                type="submit"
+                                disabled={loading || !electionId}
+                            >
+                                {loading && activeTab === 'receipt' ? 'Verifying...' : 'Verify Receipt'}
+                            </button>
+                        </form>
+                    </div>
+                )}
+
+                {/* ZK Proof Verifier */}
+                {canProof && (
+                    <div className={`section-card verifier-card ${activeTab === 'proof' ? 'ring-2' : ''}`}
+                        onClick={() => setActiveTab('proof')}>
+                        <h3>⚡ Zero-Knowledge Proof Check</h3>
+                        <p className="verifier-desc">
+                            Independently audit the tally results by verifying the ZK proof bundle.
+                        </p>
+
                         <div className="input-group">
-                            <label className="input-label">Receipt Hash</label>
-                            <input
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <label className="input-label" style={{ marginBottom: 0 }}>Proof Bundle (JSON)</label>
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleGenerateProof(); }}
+                                    className="generate-proof-btn"
+                                    disabled={loading || !electionId}
+                                >
+                                    <span>🔄</span> Generate Mock Proof
+                                </button>
+                            </div>
+                            <textarea
                                 className="verification-input"
-                                placeholder="0x..."
-                                value={receiptHash}
-                                onChange={(e) => setReceiptHash(e.target.value)}
+                                rows="6"
+                                placeholder='{"proof": "...", "public_inputs": "..."}'
+                                value={proofJson}
+                                onChange={(e) => setProofJson(e.target.value)}
                             />
                         </div>
                         <button
                             className="verify-btn"
-                            type="submit"
+                            onClick={handleProofVerify}
                             disabled={loading || !electionId}
                         >
-                            {loading && activeTab === 'receipt' ? 'Verifying...' : 'Verify Receipt'}
+                            {loading && activeTab === 'proof' ? 'Running Audit...' : 'Audit Tally Proof'}
                         </button>
-                    </form>
-                </div>
-
-                {/* ZK Proof Verifier */}
-                <div className={`section-card verifier-card ${activeTab === 'proof' ? 'ring-2' : ''}`}
-                    onClick={() => setActiveTab('proof')}>
-                    <h3>⚡ Zero-Knowledge Proof Check (US-63)</h3>
-                    <p className="verifier-desc">
-                        Independently audit the tally results by verifying the ZK proof bundle.
-                    </p>
-
-                    <div className="input-group">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <label className="input-label" style={{ marginBottom: 0 }}>Proof Bundle (JSON)</label>
-                            <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleGenerateProof(); }}
-                                className="generate-proof-btn"
-                                disabled={loading || !electionId}
-                            >
-                                <span>🔄</span> Generate Mock Proof
-                            </button>
-                        </div>
-                        <textarea
-                            className="verification-input"
-                            rows="6"
-                            placeholder='{"proof": "...", "public_inputs": "..."}'
-                            value={proofJson}
-                            onChange={(e) => setProofJson(e.target.value)}
-                        />
                     </div>
-                    <button
-                        className="verify-btn"
-                        onClick={handleProofVerify}
-                        disabled={loading || !electionId}
-                    >
-                        {loading && activeTab === 'proof' ? 'Running Audit...' : 'Audit Tally Proof'}
-                    </button>
-                </div>
+                )}
             </div>
+
+            {!canReceipt && !canProof && (
+                <div className="section-card">
+                    <p className="text-sm text-gray-500">Verification tools are not available for this role.</p>
+                </div>
+            )}
 
             {/* Verification Result */}
             {verificationResult && (

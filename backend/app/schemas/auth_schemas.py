@@ -5,7 +5,9 @@ from uuid import UUID
 
 class UserBase(BaseModel):
     identity_hash: str
-    role: str = "voter"
+    role: str = "voter"  # voter, admin, trustee, auditor, security_engineer
+    trustee_vote_limit: Optional[int] = None
+    trustee_votes_verified: Optional[int] = 0
 
 class UserCreate(UserBase):
     pass
@@ -44,6 +46,10 @@ class LoginRequest(BaseModel):
     credential: str
     password: Optional[str] = None # Or proof
 
+class RoleUpdateRequest(BaseModel):
+    role: str
+    trustee_vote_limit: Optional[int] = None
+
 class EligibilityResponse(BaseModel):
     is_eligible: bool
     reason_code: Optional[str] = None
@@ -61,9 +67,23 @@ class VoteCastRequest(BaseModel):
     token: str # Unblinded token (integer string)
     signature: str # Signature from server (integer string)
     vote_ciphertext: str
+    nonce: str
+    vote_proof: Optional[str] = None
+    client_integrity: Optional[str] = None
+    version: Optional[str] = "v1"
     
 class VoteCastResponse(BaseModel):
     status: str
     receipt_hash: str
     timestamp: datetime
+
+class CredentialRevokeRequest(BaseModel):
+    election_id: UUID
+    token_hash: str
+    reason: Optional[str] = None
+
+class VoterRegistrationRequest(BaseModel):
+    credential: str
+    is_eligible_voter: bool = True
+    jurisdiction_code: Optional[str] = None
 

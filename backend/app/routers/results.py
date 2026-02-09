@@ -30,6 +30,8 @@ from app.models.schemas import (
     ResultVerificationResponse,
     AuditLogResponse
 )
+from app.utils.auth_utils import require_roles
+from app.models.auth_models import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -156,6 +158,47 @@ def verify_results(
     )
 
 
+@router.post("/recount/{election_id}")
+def recount_results(
+    election_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "auditor"]))
+):
+    """
+    Recompute verification hash to validate deterministic recount.
+    """
+    result = db.query(ElectionResult).filter(
+        ElectionResult.election_id == election_id
+    ).first()
+
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Results not found")
+
+    hash_data = {
+        "election_id": str(result.election_id),
+        "final_tally": result.final_tally,
+        "total_votes": result.total_votes_tallied
+    }
+    recomputed_hash = hashlib.sha256(json.dumps(hash_data, sort_keys=True).encode()).hexdigest()
+    matches = recomputed_hash == result.verification_hash
+
+    log = AuditLog(
+        election_id=election_id,
+        operation_type="recount",
+        performed_by=str(current_user.user_id),
+        details={"recomputed_hash": recomputed_hash, "matches": matches},
+        status="success" if matches else "mismatch"
+    )
+    db.add(log)
+    db.commit()
+
+    return {
+        "election_id": str(election_id),
+        "recomputed_hash": recomputed_hash,
+        "matches": matches
+    }
+
+
 @router.get("/audit-log/{election_id}", response_model=List[AuditLogResponse])
 def get_audit_log(
     election_id: UUID,
@@ -192,7 +235,8 @@ def get_audit_log(
 @router.post("/publish/{election_id}")
 def publish_to_blockchain(
     election_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
 ):
     """
     Publish election results to blockchain

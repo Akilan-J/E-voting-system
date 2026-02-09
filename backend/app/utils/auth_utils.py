@@ -65,3 +65,13 @@ def get_current_admin(current_user: User = Depends(get_current_active_user)):
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Not an admin")
     return current_user
+
+def require_roles(allowed_roles):
+    def _require(current_user: User = Depends(get_current_active_user)):
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Operation not permitted. Required roles: {allowed_roles}"
+            )
+        return current_user
+    return _require

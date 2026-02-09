@@ -1,4 +1,5 @@
-from fastapi import Header, HTTPException, Request, Response
+from fastapi import Header, HTTPException, Request, Response, Depends
+from app.utils.auth_utils import get_current_active_user
 from typing import List, Optional
 import time
 from collections import defaultdict
@@ -44,19 +45,16 @@ class RateLimiter:
 class RoleChecker:
     """
     Dependency for Role-Based Access Control (RBAC).
-    Checks the 'X-User-Role' header.
+    Uses JWT-authenticated user role.
     """
     def __init__(self, allowed_roles: List[str]):
         self.allowed_roles = allowed_roles
 
-    def __call__(self, x_user_role: str = Header(default="guest", alias="X-User-Role")):
-        """
-        Validates the role header.
-        In a real app, this would decode a JWT.
-        """
-        if x_user_role not in self.allowed_roles:
+    def __call__(self, current_user = Depends(get_current_active_user)):
+        user = current_user
+        if user.role not in self.allowed_roles:
             raise HTTPException(
                 status_code=403,
                 detail=f"Operation not permitted. Required roles: {self.allowed_roles}"
             )
-        return x_user_role
+        return user.role

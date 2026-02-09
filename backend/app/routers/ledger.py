@@ -16,6 +16,8 @@ from app.models.database import get_db
 from app.models.blockchain import BlockHeader, LedgerEntryDTO
 from app.services.ledger_service import ledger_service
 from app.models.ledger_models import LedgerBlock
+from app.utils.auth_utils import require_roles
+from app.models.auth_models import User
 
 # US-45: Rate limiting and caching
 from slowapi import Limiter
@@ -61,7 +63,8 @@ async def submit_entry(
     election_id: Optional[uuid.UUID] = None,
     vote_id: Optional[uuid.UUID] = None,
     ciphertext: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "security_engineer"]))
 ):
     """Submit a new entry to the ledger"""
     try:
@@ -77,7 +80,8 @@ async def submit_entry(
 @router.post("/propose")
 async def propose_block(
     election_id: Optional[uuid.UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "security_engineer"]))
 ):
     """Trigger block proposal (Manual/Cron)"""
     try:
@@ -96,7 +100,8 @@ async def propose_block(
 async def approve_block(
     height: int,
     election_id: Optional[uuid.UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "security_engineer"]))
 ):
     """Approve a block as the current node"""
     try:
@@ -113,7 +118,8 @@ async def approve_block(
 async def finalize_block(
     height: int,
     election_id: Optional[uuid.UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "security_engineer"]))
 ):
     """Finalize block if quorum met"""
     try:
@@ -138,7 +144,8 @@ async def verify_chain(
 async def create_snapshot(
     height: int,
     election_id: Optional[uuid.UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "auditor"]))
 ):
     """Create a chain snapshot"""
     try:
@@ -155,7 +162,8 @@ async def create_snapshot(
 async def prune_ledger(
     height: int,
     election_id: Optional[uuid.UUID] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
 ):
     """Prune old ledger payloads"""
     try:

@@ -1,18 +1,115 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 import uuid
 from datetime import datetime
+import os
+import json
+import hashlib
 
-from app.models.database import get_db, AuditLog
+from app.models.database import get_db, AuditLog, EncryptedVote
 from app.models.auth_models import User, SecurityLog, EligibilityRecord
 from app.schemas.auth_schemas import (
     EligibilityResponse, BlindSignRequest, BlindSignResponse, 
-    VoteCastRequest, VoteCastResponse
+    VoteCastRequest, VoteCastResponse, CredentialRevokeRequest, VoterRegistrationRequest
 )
 from app.utils.auth_utils import get_current_user
+from app.utils.auth_utils import require_roles
 # from app.utils.crypto_utils import sign_blinded_message # Deprecated by BlindSigner
 
 router = APIRouter()
+
+MAX_CIPHERTEXT_BYTES = int(os.getenv("MAX_CIPHERTEXT_BYTES", "20000"))
+MAX_PROOF_BYTES = int(os.getenv("MAX_PROOF_BYTES", "20000"))
+SUPPORTED_VOTE_VERSIONS = {"v1"}
+
+def hash_identity(credential: str) -> str:
+    salt = os.getenv("IDENTITY_SALT", "")
+    return hashlib.sha256(f"{salt}{credential}".encode()).hexdigest()
+
+
+@router.post("/register")
+def register_voter(
+    request: VoterRegistrationRequest,
+    db: Session = Depends(get_db)
+):
+    from app.models.auth_models import Citizen
+
+    identity_hash = hash_identity(request.credential)
+    if db.query(Citizen).filter(Citizen.identity_hash == identity_hash).first():
+        raise HTTPException(status_code=409, detail="Registration already exists")
+
+    citizen = Citizen(
+        identity_hash=identity_hash,
+        is_eligible_voter=request.is_eligible_voter,
+        jurisdiction_code=request.jurisdiction_code
+    )
+    db.add(citizen)
+    db.commit()
+    db.refresh(citizen)
+    return {"status": "registered", "identity_hash": identity_hash}
+
+
+@router.post("/credential/revoke")
+def revoke_credential(
+    request: CredentialRevokeRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin"]))
+):
+    from app.models.auth_models import BlindToken
+    from app.core.security_core import ImmutableLogger
+
+    token = db.query(BlindToken).filter(BlindToken.token_hash == request.token_hash).first()
+    if not token:
+        token = BlindToken(
+            token_hash=request.token_hash,
+            status="REVOKED",
+            election_id=request.election_id,
+            expiry=datetime.utcnow(),
+            revoked_at=datetime.utcnow(),
+            revocation_reason=request.reason
+        )
+        db.add(token)
+    else:
+        token.status = "REVOKED"
+        token.revoked_at = datetime.utcnow()
+        token.revocation_reason = request.reason
+
+    ImmutableLogger.log(
+        db=db,
+        election_id=str(request.election_id),
+        operation="TOKEN_REVOKED",
+        actor=str(current_user.user_id),
+        details={"token_hash": request.token_hash, "reason": request.reason},
+        status="SUCCESS",
+        ip="127.0.0.1"
+    )
+    db.commit()
+    return {"status": "revoked", "token_hash": request.token_hash}
+
+
+@router.post("/election/{election_id}/revoke-all")
+def revoke_all_credentials(
+    election_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(["admin"]))
+):
+    from app.models.database import Election
+    from app.core.security_core import ImmutableLogger
+    election = db.query(Election).filter(Election.election_id == election_id).first()
+    if not election:
+        raise HTTPException(status_code=404, detail="Election not found")
+    election.revoke_all = True
+    ImmutableLogger.log(
+        db=db,
+        election_id=str(election_id),
+        operation="REVOKE_ALL",
+        actor=str(current_user.user_id),
+        details={"election_id": str(election_id)},
+        status="SUCCESS",
+        ip="127.0.0.1"
+    )
+    db.commit()
+    return {"status": "revoked_all", "election_id": str(election_id)}
 
 @router.get("/eligibility/{election_id}", response_model=EligibilityResponse)
 def check_eligibility(
@@ -74,7 +171,7 @@ def issue_credential(
         raise HTTPException(status_code=403, detail="User is not an active voter")
 
     # 3. Check for Duplicate Issuance (US-6/US-13)
-    # Strict 1-person-1-credential check using SecurityLog
+    # Strict 1-person-1-credential check using SecurityLog (can be disabled for demos)
     search_str = f"Election: {req.election_id}"
     existing_issuance = db.query(SecurityLog).filter(
         SecurityLog.user_id == current_user.user_id,
@@ -82,7 +179,8 @@ def issue_credential(
         SecurityLog.details.contains(str(req.election_id))
     ).first()
     
-    if existing_issuance:
+    allow_reissue = os.getenv("ALLOW_CREDENTIAL_REISSUE", "true").lower() == "true"
+    if existing_issuance and not allow_reissue:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail=f"Credential has already been issued to this identity for election {req.election_id}"
@@ -123,7 +221,8 @@ def issue_credential(
 @router.post("/vote", response_model=VoteCastResponse)
 def cast_vote(
     req: VoteCastRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     """
     US-3: Vote Verification using Unblinded Credential.
@@ -134,6 +233,14 @@ def cast_vote(
     from app.services.ledger_service import ledger_service
     import hashlib
     
+    # 0. Basic schema and size checks
+    if req.version not in SUPPORTED_VOTE_VERSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported vote schema version")
+    if len(req.vote_ciphertext.encode()) > MAX_CIPHERTEXT_BYTES:
+        raise HTTPException(status_code=413, detail="Vote payload too large")
+    if req.vote_proof and len(req.vote_proof.encode()) > MAX_PROOF_BYTES:
+        raise HTTPException(status_code=413, detail="Proof payload too large")
+
     # 1. Verify Signature
     try:
         token_int = int(req.token)
@@ -199,6 +306,50 @@ def cast_vote(
              raise HTTPException(status_code=403, detail="Credential Revoked")
         raise HTTPException(status_code=403, detail="Double Voting Detected")
         
+    # 5b. Replay protection via nonce
+    existing_nonce = db.query(EncryptedVote).filter(
+        EncryptedVote.election_id == req.election_id,
+        EncryptedVote.nonce == req.nonce
+    ).first()
+    if existing_nonce:
+        raise HTTPException(status_code=403, detail="Replay detected: nonce already used")
+
+    # 5c. Election window enforcement
+    from app.models.database import Election
+    election = db.query(Election).filter(Election.election_id == req.election_id).first()
+    if not election:
+        raise HTTPException(status_code=404, detail="Election not found")
+    now = datetime.utcnow()
+    if now < election.start_time or now > election.end_time:
+        raise HTTPException(status_code=403, detail="Election is closed")
+    if election.revoke_all:
+        raise HTTPException(status_code=403, detail="All credentials revoked for this election")
+
+    # 5d. Client integrity check (optional allowlist)
+    allowlist = [s.strip() for s in os.getenv("CLIENT_BUILD_ALLOWLIST", "demo-build-1").split(",") if s.strip()]
+    if allowlist and req.client_integrity and req.client_integrity not in allowlist:
+        raise HTTPException(status_code=403, detail="Client integrity verification failed")
+
+    # 5f. Optional ZK proof check (deterministic hash-based demo)
+    if req.vote_proof:
+        expected_proof = hashlib.sha256(
+            f"{req.election_id}|{req.nonce}|{req.vote_ciphertext}".encode()
+        ).hexdigest()
+        if req.vote_proof != expected_proof:
+            raise HTTPException(status_code=400, detail="Invalid vote proof")
+
+    # 5e. Candidate validity (when ciphertext is JSON-encoded in demo)
+    try:
+        decoded = json.loads(req.vote_ciphertext)
+        candidate_id = decoded.get("candidate_id")
+        if candidate_id is not None:
+            candidates = election.candidates if isinstance(election.candidates, list) else json.loads(election.candidates)
+            valid_ids = {c["id"] for c in candidates}
+            if candidate_id not in valid_ids:
+                raise HTTPException(status_code=400, detail="Invalid candidate")
+    except json.JSONDecodeError:
+        pass
+
     # 6. Record Token Usage
     new_token_record = BlindToken(
         token_hash=token_hash,
@@ -211,17 +362,17 @@ def cast_vote(
     
     # 7. Submit to Ledger
     try:
-        from app.models.database import EncryptedVote
         import uuid
         
         vote_id = uuid.uuid4()
-        nonce = str(uuid.uuid4()) # In prod: Client should provide this for verification, or we generate securely
+        nonce = req.nonce
         
         # Store actual vote payload (Ledger stores hash)
         enc_vote = EncryptedVote(
             vote_id=vote_id,
             election_id=req.election_id,
             encrypted_vote=req.vote_ciphertext,
+            vote_proof=req.vote_proof,
             nonce=nonce,
             timestamp=datetime.utcnow(),
             is_tallied=False

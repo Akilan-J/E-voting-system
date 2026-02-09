@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { opsAPI, resultsAPI } from '../services/api';
+import { opsAPI, resultsAPI, authAPI } from '../services/api';
 import './OpsDashboard.css';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 
@@ -17,6 +17,15 @@ const OpsDashboard = () => {
     const [showIncidentModal, setShowIncidentModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [selectedIncident, setSelectedIncident] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [userUpdate, setUserUpdate] = useState({});
+    const authRole = localStorage.getItem('authRole');
+    const canAccessControl = authRole === 'admin';
+    const canDownloadArtifacts = authRole === 'admin' || authRole === 'auditor';
+    const canReportIncident = authRole === 'security_engineer' || authRole === 'admin';
+    const canUpdateIncidentStatus = authRole === 'admin' || authRole === 'auditor';
+    const canViewDisputes = authRole === 'admin' || authRole === 'auditor';
+    const canFileDisputes = authRole === 'auditor';
 
     // Form State
     const [newIncident, setNewIncident] = useState({ title: '', severity: 'low', description: '' });
@@ -33,7 +42,16 @@ const OpsDashboard = () => {
             if (res.data && res.data.length > 0) setElectionId(res.data[0].election_id);
         });
         loadIncidents();
+        if (canAccessControl) {
+            loadUsers();
+        }
     }, []);
+
+    useEffect(() => {
+        if (!canViewDisputes && activeTab === 'disputes') {
+            setActiveTab('incidents');
+        }
+    }, [canViewDisputes, activeTab]);
 
     useEffect(() => {
         if (electionId) loadMetrics(electionId);
@@ -59,6 +77,26 @@ const OpsDashboard = () => {
         }
     };
 
+    const loadUsers = async () => {
+        try {
+            const res = await authAPI.listUsers();
+            setUsers(res.data);
+        } catch (err) {
+            console.error("Failed to load users", err);
+        }
+    };
+
+    const handleUserUpdate = async (userId) => {
+        try {
+            const payload = userUpdate[userId];
+            if (!payload) return;
+            await authAPI.updateUserRole(userId, payload);
+            await loadUsers();
+        } catch (err) {
+            alert(err.response?.data?.detail || 'Failed to update user');
+        }
+    };
+
     const handleDownloadEvidence = async () => {
         if (!electionId) return;
         try {
@@ -72,6 +110,23 @@ const OpsDashboard = () => {
             link.remove();
         } catch (err) {
             console.error("Download failed", err);
+        }
+    };
+
+    const handleDownloadCompliance = async () => {
+        if (!electionId) return;
+        try {
+            const response = await opsAPI.downloadComplianceReport(electionId);
+            const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `compliance_${electionId}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error("Compliance report download failed", err);
         }
     };
 
@@ -120,6 +175,8 @@ const OpsDashboard = () => {
         }
     };
 
+    const roleOptions = ['voter', 'admin', 'trustee', 'auditor', 'security_engineer'];
+
     if (loading && !electionId) return <div className="loading"><div className="spinner"></div>Loading Dashboard...</div>;
 
     return (
@@ -161,18 +218,84 @@ const OpsDashboard = () => {
                     <h3>📦 Audit Artifacts</h3>
                     <div className="evidence-content text-center">
                         <p className="text-sm text-gray-500 mb-4">
-                            Verifiable Evidence Package (US-66) including signed manifests, logs, and tally results.
+                            Verifiable evidence package including signed manifests, logs, and tally results.
                         </p>
-                        <button
-                            onClick={handleDownloadEvidence}
-                            className="download-btn w-full justify-center"
-                            disabled={!electionId}
-                        >
-                            <span>📂</span> Download Evidence ZIP
-                        </button>
+                        {canDownloadArtifacts ? (
+                            <>
+                                <button
+                                    onClick={handleDownloadEvidence}
+                                    className="download-btn w-full justify-center"
+                                    disabled={!electionId}
+                                >
+                                    <span>📂</span> Download Evidence ZIP
+                                </button>
+                                <button
+                                    onClick={handleDownloadCompliance}
+                                    className="download-btn w-full justify-center"
+                                    disabled={!electionId}
+                                    style={{ marginTop: '0.75rem' }}
+                                >
+                                    <span>📄</span> Download Compliance Report
+                                </button>
+                            </>
+                        ) : (
+                            <p className="text-xs text-gray-500">Artifacts are available to admin and auditor roles.</p>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {canAccessControl && (
+                <div className="card access-card mb-8">
+                    <h3>🔐 Access Control</h3>
+                    <p className="text-sm text-gray-500">Assign roles and set trustee verification limits.</p>
+                    <div className="access-table">
+                        <div className="access-row access-header">
+                            <span>User ID</span>
+                            <span>Role</span>
+                            <span>Trustee Limit</span>
+                            <span>Action</span>
+                        </div>
+                        {users.map(user => (
+                            <div className="access-row" key={user.user_id}>
+                                <span className="mono">{user.user_id}</span>
+                                <select
+                                    value={userUpdate[user.user_id]?.role || user.role}
+                                    onChange={(e) =>
+                                        setUserUpdate(prev => ({
+                                            ...prev,
+                                            [user.user_id]: {
+                                                ...prev[user.user_id],
+                                                role: e.target.value
+                                            }
+                                        }))
+                                    }
+                                >
+                                    {roleOptions.map(role => (
+                                        <option key={role} value={role}>{role}</option>
+                                    ))}
+                                </select>
+                                <input
+                                    type="number"
+                                    placeholder="Limit"
+                                    value={userUpdate[user.user_id]?.trustee_vote_limit ?? user.trustee_vote_limit ?? ''}
+                                    onChange={(e) =>
+                                        setUserUpdate(prev => ({
+                                            ...prev,
+                                            [user.user_id]: {
+                                                ...prev[user.user_id],
+                                                trustee_vote_limit: e.target.value === '' ? null : Number(e.target.value)
+                                            }
+                                        }))
+                                    }
+                                    disabled={(userUpdate[user.user_id]?.role || user.role) !== 'trustee'}
+                                />
+                                <button onClick={() => handleUserUpdate(user.user_id)}>Update</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Main Content Area */}
             <div className="card main-content-card">
@@ -183,12 +306,14 @@ const OpsDashboard = () => {
                     >
                         🚨 Incident Response (US-70)
                     </button>
-                    <button
-                        className={`tab-btn ${activeTab === 'disputes' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('disputes')}
-                    >
-                        ⚖️ Dispute Resolution (US-71)
-                    </button>
+                    {canViewDisputes && (
+                        <button
+                            className={`tab-btn ${activeTab === 'disputes' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('disputes')}
+                        >
+                            ⚖️ Dispute Resolution (US-71)
+                        </button>
+                    )}
                 </div>
 
                 {/* INCIDENTS TAB */}
@@ -196,9 +321,11 @@ const OpsDashboard = () => {
                     <div className="incidents-container">
                         <div className="flex justify-between items-center mb-4">
                             <h4 className="text-gray-600 font-bold">Active Incidents</h4>
-                            <button className="action-btn" onClick={() => setShowIncidentModal(true)}>
-                                + Report Incident
-                            </button>
+                            {canReportIncident && (
+                                <button className="action-btn" onClick={() => setShowIncidentModal(true)}>
+                                    + Report Incident
+                                </button>
+                            )}
                         </div>
 
                         <div className="incidents-list-improved">
@@ -226,37 +353,41 @@ const OpsDashboard = () => {
                 )}
 
                 {/* DISPUTES TAB */}
-                {activeTab === 'disputes' && (
+                {activeTab === 'disputes' && canViewDisputes && (
                     <div className="disputes-section flex gap-8">
                         <div className="w-1/3 border-r pr-6">
                             <h4 className="text-lg font-bold mb-4 text-gray-700">File Formal Dispute</h4>
-                            <form onSubmit={handleFileDispute} className="space-y-4">
-                                <div>
-                                    <label className="form-label">Nature of Dispute</label>
-                                    <select className="form-select" value={disputeForm.category} onChange={e => setDisputeForm({ ...disputeForm, category: e.target.value })}>
-                                        <option>Tally Mismatch</option>
-                                        <option>Ledger Corruption</option>
-                                        <option>Procedural Violation</option>
-                                        <option>Other</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="form-label">Case Title</label>
-                                    <input className="form-input" placeholder="Short summary" required value={disputeForm.title} onChange={e => setDisputeForm({ ...disputeForm, title: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="form-label">Evidence (Hash/URL)</label>
-                                    <input className="form-input" placeholder="Artifact hash or link..." required value={disputeForm.evidence} onChange={e => setDisputeForm({ ...disputeForm, evidence: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="form-label">Formal Justification</label>
-                                    <textarea className="form-textarea h-24" placeholder="Explain why this dispute is valid..." required value={disputeForm.justification} onChange={e => setDisputeForm({ ...disputeForm, justification: e.target.value })} />
-                                </div>
-                                <div className="bg-yellow-50 p-2 text-xs text-yellow-800 rounded">
-                                    ⚠️ False disputes may result in credential revocation.
-                                </div>
-                                <button className="btn-primary w-full py-2">Submit Case</button>
-                            </form>
+                            {canFileDisputes ? (
+                                <form onSubmit={handleFileDispute} className="space-y-4">
+                                    <div>
+                                        <label className="form-label">Nature of Dispute</label>
+                                        <select className="form-select" value={disputeForm.category} onChange={e => setDisputeForm({ ...disputeForm, category: e.target.value })}>
+                                            <option>Tally Mismatch</option>
+                                            <option>Ledger Corruption</option>
+                                            <option>Procedural Violation</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Case Title</label>
+                                        <input className="form-input" placeholder="Short summary" required value={disputeForm.title} onChange={e => setDisputeForm({ ...disputeForm, title: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Evidence (Hash/URL)</label>
+                                        <input className="form-input" placeholder="Artifact hash or link..." required value={disputeForm.evidence} onChange={e => setDisputeForm({ ...disputeForm, evidence: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Formal Justification</label>
+                                        <textarea className="form-textarea h-24" placeholder="Explain why this dispute is valid..." required value={disputeForm.justification} onChange={e => setDisputeForm({ ...disputeForm, justification: e.target.value })} />
+                                    </div>
+                                    <div className="bg-yellow-50 p-2 text-xs text-yellow-800 rounded">
+                                        ⚠️ False disputes may result in credential revocation.
+                                    </div>
+                                    <button className="btn-primary w-full py-2">Submit Case</button>
+                                </form>
+                            ) : (
+                                <p className="text-sm text-gray-500">Dispute filing is restricted to auditors.</p>
+                            )}
                         </div>
 
                         <div className="w-2/3">
@@ -283,7 +414,7 @@ const OpsDashboard = () => {
             </div>
 
             {/* MODAL: Report Incident */}
-            {showIncidentModal && (
+            {showIncidentModal && canReportIncident && (
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="flex justify-between items-center mb-4">
@@ -335,9 +466,15 @@ const OpsDashboard = () => {
                         </div>
 
                         <div className="modal-actions border-t pt-4 flex justify-end gap-3">
-                            <button className="btn-secondary" onClick={() => handleUpdateStatus('open')}>Mark Open</button>
-                            <button className="btn-secondary" onClick={() => handleUpdateStatus('investigating')}>Investigate</button>
-                            <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateStatus('resolved')}>Resolve Issue</button>
+                            {canUpdateIncidentStatus ? (
+                                <>
+                                    <button className="btn-secondary" onClick={() => handleUpdateStatus('open')}>Mark Open</button>
+                                    <button className="btn-secondary" onClick={() => handleUpdateStatus('investigating')}>Investigate</button>
+                                    <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateStatus('resolved')}>Resolve Issue</button>
+                                </>
+                            ) : (
+                                <span className="text-sm text-gray-500">Status updates are restricted to admin and auditor roles.</span>
+                            )}
                         </div>
                     </div>
                 </div>

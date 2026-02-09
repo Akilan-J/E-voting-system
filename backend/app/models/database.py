@@ -66,6 +66,7 @@ class Election(Base):
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     status = Column(String(50), default="pending")
+    revoke_all = Column(Boolean, default=False)
     total_voters = Column(Integer, default=0)
     candidates = Column(JSON, nullable=False)
     encryption_params = Column(JSON)

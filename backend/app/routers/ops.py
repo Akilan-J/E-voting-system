@@ -10,10 +10,11 @@ import zipfile
 import json
 import logging
 
-from app.models import get_db, Election, ElectionResult, EncryptedVote, Trustee, Incident
+from app.models import get_db, Election, ElectionResult, EncryptedVote, Trustee, Incident, AuditLog
 from app.models.schemas import IncidentResponse, IncidentCreate, IncidentUpdate
 from app.services.monitoring import logging_service
 from app.utils.crypto_utils import signer
+from app.services.ledger_service import ledger_service
 from app.utils.auth import RoleChecker
 
 router = APIRouter()
@@ -133,7 +134,7 @@ async def get_incidents(
 async def create_incident(
     incident: IncidentCreate,
     db: Session = Depends(get_db),
-    role: str = Depends(RoleChecker(["admin", "operator", "auditor"]))
+    role: str = Depends(RoleChecker(["admin", "auditor", "security_engineer"]))
 ):
     """Report a new incident."""
     db_incident = Incident(
@@ -159,7 +160,7 @@ async def update_incident(
     incident_id: UUID,
     incident_update: IncidentUpdate,
     db: Session = Depends(get_db),
-    role: str = Depends(RoleChecker(["admin", "compliance_officer"]))
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
 ):
     """Update incident status or notes."""
     db_incident = db.query(Incident).filter(Incident.incident_id == incident_id).first()
@@ -180,3 +181,34 @@ async def update_incident(
     })
     
     return db_incident
+
+
+# US-72: Compliance Reporting
+@router.get("/compliance-report/{election_id}")
+async def compliance_report(
+    election_id: UUID,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    election = db.query(Election).filter(Election.election_id == election_id).first()
+    if not election:
+        raise HTTPException(status_code=404, detail="Election not found")
+
+    result = db.query(ElectionResult).filter(ElectionResult.election_id == election_id).first()
+    audit_count = db.query(AuditLog).filter(AuditLog.election_id == election_id).count()
+    chain_status = ledger_service.verify_chain(db, election_id)
+
+    report = {
+        "election_id": str(election_id),
+        "controls": {
+            "audit_logging": {"evidence": f"audit_logs:{audit_count}"},
+            "ledger_integrity": {"evidence": chain_status},
+            "result_verification": {"evidence": result.verification_hash if result else None}
+        },
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
+    signature = signer.sign_data(report)
+    report["signature"] = signature
+    report["public_key"] = signer.get_public_key_pem()
+    return report

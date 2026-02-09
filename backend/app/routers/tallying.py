@@ -29,6 +29,8 @@ from app.models.schemas import (
     TallyStatusResponse
 )
 from app.services import tallying_service
+from app.utils.auth_utils import require_roles
+from app.models.auth_models import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -37,7 +39,8 @@ logger = logging.getLogger(__name__)
 @router.post("/start", response_model=TallyStartResponse)
 def start_tallying(
     request: TallyStartRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
 ):
     """
     Start the tallying process for an election
@@ -84,7 +87,8 @@ def start_tallying(
 def partial_decrypt(
     trustee_id: UUID,
     election_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["trustee"]))
 ):
     """
     Perform partial decryption by a trustee
@@ -98,6 +102,9 @@ def partial_decrypt(
     logger.info(f"Trustee {trustee_id} performing partial decryption for election {election_id}")
     
     try:
+        if current_user.trustee_vote_limit is not None and current_user.trustee_votes_verified >= current_user.trustee_vote_limit:
+            raise HTTPException(status_code=403, detail="Trustee verification limit reached")
+
         result = tallying_service.partial_decrypt(
             db=db,
             election_id=str(election_id),
@@ -108,6 +115,9 @@ def partial_decrypt(
         if result["can_finalize"]:
             message += " - Ready to finalize!"
         
+        current_user.trustee_votes_verified = (current_user.trustee_votes_verified or 0) + 1
+        db.commit()
+
         return PartialDecryptResponse(
             decryption_id=result["decryption_id"],
             election_id=election_id,
@@ -133,7 +143,8 @@ def partial_decrypt(
 @router.post("/finalize", response_model=TallyFinalizeResponse)
 def finalize_tally(
     request: TallyFinalizeRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
 ):
     """
     Finalize the tally and compute final results

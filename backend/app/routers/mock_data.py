@@ -67,7 +67,13 @@ def generate_mock_votes(
     try:
         # Parse candidates
         candidates = election.candidates if isinstance(election.candidates, list) else json.loads(election.candidates)
+        if not isinstance(candidates, list) or not candidates:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Election has no candidates configured"
+            )
         num_candidates = len(candidates)
+        candidate_ids = [c.get("id", index + 1) for index, c in enumerate(candidates)]
         
         # Generate or load encryption keys
         if not election.encryption_params:
@@ -91,10 +97,11 @@ def generate_mock_votes(
             # Random candidate selection (weighted random for realism)
             # Give first candidate slight advantage for interesting results
             weights = [0.35] + [0.65 / (num_candidates - 1)] * (num_candidates - 1) if num_candidates > 1 else [1.0]
-            candidate_id = random.choices(range(1, num_candidates + 1), weights=weights)[0]
+            candidate_id = random.choices(candidate_ids, weights=weights, k=1)[0]
             
             # Track distribution
-            candidate_name = candidates[candidate_id - 1]["name"]
+            candidate_index = candidate_ids.index(candidate_id)
+            candidate_name = candidates[candidate_index].get("name", f"Candidate {candidate_id}")
             distribution[candidate_name] = distribution.get(candidate_name, 0) + 1
             
             # Encrypt vote
@@ -192,6 +199,7 @@ def reset_database(
             EncryptedVote, PartialDecryption, ElectionResult,
             AuditLog, VerificationProof, TallyingSession
         )
+        from app.models.auth_models import SecurityLog, BlindToken
         
         # Delete all data
         db.query(VerificationProof).delete()
@@ -200,6 +208,8 @@ def reset_database(
         db.query(PartialDecryption).delete()
         db.query(EncryptedVote).delete()
         db.query(TallyingSession).delete()
+        db.query(SecurityLog).delete()
+        db.query(BlindToken).delete()
         
         # Reset election statuses
         db.query(Election).update({"status": "active", "total_voters": 0})
@@ -211,7 +221,7 @@ def reset_database(
         return {
             "success": True,
             "message": "Database reset successfully",
-            "note": "Elections and trustees preserved"
+            "note": "Elections and trustees preserved; tokens and security logs cleared"
         }
         
     except Exception as e:
@@ -453,20 +463,30 @@ def generate_mock_zk_proof(
     if not election:
         raise HTTPException(status_code=404, detail="Election not found")
         
+    from app.models.ledger_models import LedgerEntry
+    from app.models.database import ElectionResult
+    from app.utils.crypto_utils import MerkleTree
+    import hashlib
+
+    result = db.query(ElectionResult).filter(ElectionResult.election_id == election_id).first()
+    if not result:
+        raise HTTPException(status_code=404, detail="Election results not published")
+
+    entries = db.query(LedgerEntry).filter(LedgerEntry.election_id == election_id).order_by(LedgerEntry.created_at).all()
+    leaves = [e.entry_hash for e in entries]
+    ledger_root = MerkleTree(leaves).get_root() if leaves else "0" * 64
+
+    proof_hash = hashlib.sha256(
+        f"{election_id}|{result.verification_hash}|{ledger_root}".encode()
+    ).hexdigest()
+
     return {
         "election_id": election_id,
         "proof_bundle": {
-            "protocol": "Chaum-Pedersen-Log-Eq",
-            "curve": "secp256k1",
-            "commitment": {
-                "A": "029a8f...", 
-                "B": "031b2c..."
-            },
-            "challenge": "c89f2a...",
-            "response": "7d3e1f...",
-            "zero_knowledge_proofs": [
-                {"vote_index": 0, "status": "valid", "proof": "mock_proof_x7z"},
-                {"vote_index": 1, "status": "valid", "proof": "mock_proof_y9a"}
-            ]
+            "election_id": str(election_id),
+            "verification_hash": result.verification_hash,
+            "ledger_root": ledger_root,
+            "proof_hash": proof_hash,
+            "method": "hash-linked-proof"
         }
     }

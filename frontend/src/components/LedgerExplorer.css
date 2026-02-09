@@ -186,6 +186,72 @@
   color: #999;
 }
 
+/* Theme Overrides */
+.explorer-header {
+  border-bottom: 2px solid var(--line);
+}
+
+.header-content h2 {
+  color: var(--ink);
+}
+
+.header-content p,
+.last-updated,
+.status-label,
+.loading-state,
+.empty-state p,
+.error-state span {
+  color: var(--ink-muted);
+}
+
+.btn-refresh {
+  background: var(--accent);
+  border-radius: var(--radius-md);
+}
+
+.btn-refresh:hover {
+  box-shadow: none;
+}
+
+.status-card,
+.blocks-section {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.status-card.valid {
+  border-color: var(--accent);
+  background: #dff2ec;
+}
+
+.status-card.warning {
+  border-color: #5a4a14;
+  background: #f5e9c4;
+}
+
+.status-value,
+.blocks-section h3,
+.empty-state h4 {
+  color: var(--ink);
+}
+
+.spinner {
+  border: 3px solid #efe9da;
+  border-top-color: var(--accent);
+}
+
+.error-state {
+  background: #ffe5e5;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--danger);
+}
+
+.error-state p {
+  color: var(--danger);
+}
+
 /* Blocks List */
 .blocks-list {
   display: flex;

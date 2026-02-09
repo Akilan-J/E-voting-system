@@ -4,7 +4,8 @@ import axios from 'axios';
 import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
 import './VoterAccess.css';
 
-const VoterAccess = () => {
+const VoterAccess = ({ authRole: authRoleProp }) => {
+  const [authRole, setAuthRole] = useState(authRoleProp || localStorage.getItem('authRole'));
   const [loginMode, setLoginMode] = useState('voter'); // 'voter' or 'admin'
 
   const [step, setStep] = useState('login'); // login, mfa, dashboard
@@ -15,10 +16,15 @@ const VoterAccess = () => {
   const [messages, setMessages] = useState([]);
   const [eligibility, setEligibility] = useState(null);
   const [electionData, setElectionData] = useState(null);
+  const [electionError, setElectionError] = useState(null);
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [voteReceipt, setVoteReceipt] = useState(null);
   const [blindedToken, setBlindedToken] = useState(null); // Valid token for voting
   const [signature, setSignature] = useState(null); // State for the signature
+
+  React.useEffect(() => {
+    setAuthRole(authRoleProp || localStorage.getItem('authRole'));
+  }, [authRoleProp]);
 
   // Hardcoded election ID for demo purposes
   const electionId = "00000000-0000-0000-0000-000000000001";
@@ -29,21 +35,45 @@ const VoterAccess = () => {
     console.log(msg);
   };
 
+  const hashProof = async (payload) => {
+    if (!window.crypto?.subtle) return '';
+    const encoder = new TextEncoder();
+    const data = encoder.encode(payload);
+    const digest = await window.crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(digest));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
 
 
   // Fetch election details on mount
   React.useEffect(() => {
     const fetchElection = async () => {
       try {
+        setElectionError(null);
         // Use the hardcoded demo election ID
         const res = await axios.get(`/api/mock/election-stats?election_id=${electionId}`);
         setElectionData(res.data.election);
       } catch (err) {
-        log(`Failed to load election data: ${err.message}`);
+        const errorMessage = `Failed to load election data: ${err.response?.data?.detail || err.message}`;
+        setElectionError(errorMessage);
+        log(errorMessage);
       }
     };
     fetchElection();
   }, []);
+
+  const handleElectionReload = async () => {
+    try {
+      setElectionError(null);
+      const res = await axios.get(`/api/mock/election-stats?election_id=${electionId}`);
+      setElectionData(res.data.election);
+    } catch (err) {
+      const errorMessage = `Failed to load election data: ${err.response?.data?.detail || err.message}`;
+      setElectionError(errorMessage);
+      log(errorMessage);
+    }
+  };
 
   // Real OIDC Login
   const handleLogin = async () => {
@@ -54,16 +84,31 @@ const VoterAccess = () => {
 
       if (res.data.mfa_required) {
         setToken(res.data.access_token);
+        localStorage.setItem('authToken', res.data.access_token);
+        localStorage.setItem('authRole', res.data.role || 'mfa_pending');
+        setAuthRole(res.data.role || 'mfa_pending');
         setStep('mfa_login');
         log("MFA Required");
       } else {
         setToken(res.data.access_token);
+        localStorage.setItem('authToken', res.data.access_token);
+        localStorage.setItem('authRole', res.data.role || 'voter');
+        setAuthRole(res.data.role || 'voter');
         setStep('dashboard');
         log("Logged in successfully");
       }
     } catch (err) {
       log(`Login Error: ${err.response?.data?.detail || err.message}`);
     }
+  };
+
+  const resetRestrictedAccess = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authRole');
+    setAuthRole(null);
+    setToken(null);
+    setIdentity('');
+    setStep('login');
   };
 
   // Real MFA Setup
@@ -92,6 +137,8 @@ const VoterAccess = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setToken(res.data.access_token);
+      localStorage.setItem('authToken', res.data.access_token);
+      localStorage.setItem('authRole', res.data.role || 'voter');
       setStep('dashboard');
       log("MFA Verified. Logged in.");
     } catch (err) {
@@ -172,11 +219,18 @@ const VoterAccess = () => {
         timestamp: Date.now()
       });
 
+      const nonce = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      const voteProof = await hashProof(`${electionId}|${nonce}|${votePayload}`);
+
       const res = await axios.post('/api/voter/vote', {
         election_id: electionId,
         token: blindedToken, // The token we got signed
         signature: signature,
-        vote_ciphertext: votePayload
+        vote_ciphertext: votePayload,
+        nonce,
+        vote_proof: voteProof,
+        client_integrity: 'demo-build-1',
+        version: 'v1'
       });
 
       setVoteReceipt(res.data);
@@ -186,6 +240,7 @@ const VoterAccess = () => {
       log(`Vote Error: ${err.response?.data?.detail || err.message}`);
     }
   };
+
 
   // Voted View
   if (step === 'voted') {
@@ -231,6 +286,11 @@ const VoterAccess = () => {
           </div>
 
           <div className="login-form">
+            {authRole && authRole !== 'voter' && (
+              <div className="input-hint" style={{ color: '#b45309' }}>
+                You are currently signed in as {authRole}. Log in as a voter to continue.
+              </div>
+            )}
             <div className="input-group">
               <label className="input-label">
                 {loginMode === 'voter' ? 'Digital ID / Email' : 'Admin / Trustee Username'}
@@ -238,10 +298,13 @@ const VoterAccess = () => {
               <input
                 className="input-field"
                 type="text"
-                placeholder={loginMode === 'voter' ? "Enter your Digital ID" : "username"}
+                placeholder={loginMode === 'voter' ? "Enter your Digital ID (voter1-voter5)" : "username"}
                 value={identity}
                 onChange={e => setIdentity(e.target.value)}
               />
+              {loginMode === 'voter' && (
+                <p className="input-hint">Demo voters: voter1, voter2, voter3, voter4, voter5</p>
+              )}
             </div>
 
             <button className={`auth-btn ${loginMode === 'admin' ? 'admin-theme' : ''}`} onClick={handleLogin}>
@@ -260,8 +323,10 @@ const VoterAccess = () => {
             <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>
               <p>Demo Config (Hardcoded):</p>
               <ul style={{ listStyle: 'none', padding: 0 }}>
-                <li>Admin: <code>admin123</code></li>
-                <li>Trustee: <code>trustee1</code></li>
+                <li>Admin: <code>admin</code></li>
+                <li>Trustee: <code>trustee</code></li>
+                <li>Auditor: <code>auditor</code></li>
+                <li>Security: <code>security_engineer</code></li>
               </ul>
             </div>
           )}
@@ -270,6 +335,22 @@ const VoterAccess = () => {
             <Shield className="footer-icon" />
             <span>256-bit Secure System</span>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (authRole && authRole !== 'voter') {
+    return (
+      <div className="voter-access project-box">
+        <h2>👤 Voter Access</h2>
+        <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
+          <AlertCircle size={48} color="#b45309" style={{ marginBottom: '1rem' }} />
+          <h3>Restricted Access</h3>
+          <p>Voting tools are available to the voter role only.</p>
+          <button className="auth-btn" style={{ marginTop: '1.5rem' }} onClick={resetRestrictedAccess}>
+            Switch to Voter Login
+          </button>
         </div>
       </div>
     );
@@ -367,6 +448,11 @@ const VoterAccess = () => {
               <div className="credential-box">
                 <h4>✅ Credential Issued</h4>
                 <p><small style={{ color: '#10b981' }}>Ready to Vote</small></p>
+                {!electionData && (
+                  <p style={{ marginTop: '0.5rem', color: '#b45309', fontSize: '0.85rem' }}>
+                    Election details not loaded yet. Scroll down to retry loading the ballot.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -374,43 +460,70 @@ const VoterAccess = () => {
       </div>
 
       {/* Voting Booth - Visible only after getting signature */}
-      {signature && electionData && (
+      {signature && (
         <div className="voting-booth" style={{ marginTop: '2rem', padding: '1.5rem', background: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ Voting Booth: {electionData.title}</h2>
-          <p style={{ color: '#666', marginBottom: '1.5rem' }}>Select your candidate. Your vote will be anonymously cast.</p>
+          {electionData ? (
+            <>
+              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ Voting Booth: {electionData.title}</h2>
+              <p style={{ color: '#666', marginBottom: '1.5rem' }}>Select your candidate. Your vote will be anonymously cast.</p>
 
-          <div className="candidates-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-            {electionData.candidates && electionData.candidates.map(c => (
-              <label key={c.id} className={`candidate-card ${selectedCandidate === c.id ? 'selected' : ''}`}
-                style={{
-                  padding: '1rem',
-                  border: selectedCandidate === c.id ? '2px solid #3b82f6' : '1px solid #eee',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: selectedCandidate === c.id ? '#eff6ff' : 'white',
-                  transition: 'all 0.2s'
-                }}
+              <div className="candidates-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                {(() => {
+                  let candidates = electionData.candidates;
+                  if (typeof candidates === 'string') {
+                    try {
+                      candidates = JSON.parse(candidates);
+                    } catch (parseError) {
+                      candidates = [];
+                    }
+                  }
+                  return Array.isArray(candidates) && candidates.length > 0 ? (
+                    candidates.map(c => (
+                      <label key={c.id} className={`candidate-card ${selectedCandidate === c.id ? 'selected' : ''}`}
+                        style={{
+                          padding: '1rem',
+                          border: selectedCandidate === c.id ? '2px solid #3b82f6' : '1px solid #eee',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          background: selectedCandidate === c.id ? '#eff6ff' : 'white',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="candidate"
+                          value={c.id}
+                          onChange={() => setSelectedCandidate(c.id)}
+                          style={{ marginRight: '10px' }}
+                        />
+                        <strong>{c.name}</strong>
+                        <div style={{ fontSize: '0.8rem', color: '#888' }}>{c.party}</div>
+                      </label>
+                    ))
+                  ) : (
+                    <p style={{ color: '#b45309' }}>No candidates available for this election.</p>
+                  );
+                })()}
+              </div>
+
+              <button
+                className="auth-btn"
+                style={{ marginTop: '2rem', background: '#ec4899', fontSize: '1.1rem' }}
+                onClick={castVote}
               >
-                <input
-                  type="radio"
-                  name="candidate"
-                  value={c.id}
-                  onChange={() => setSelectedCandidate(c.id)}
-                  style={{ marginRight: '10px' }}
-                />
-                <strong>{c.name}</strong>
-                <div style={{ fontSize: '0.8rem', color: '#888' }}>{c.party}</div>
-              </label>
-            ))}
-          </div>
-
-          <button
-            className="auth-btn"
-            style={{ marginTop: '2rem', background: '#ec4899', fontSize: '1.1rem' }}
-            onClick={castVote}
-          >
-            🔒 Cast Private Vote
-          </button>
+                🔒 Cast Private Vote
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ Voting Booth</h2>
+              <p style={{ color: '#666', marginBottom: '1rem' }}>Election details could not be loaded yet.</p>
+              {electionError && <p style={{ color: '#b45309', marginBottom: '1rem' }}>{electionError}</p>}
+              <button className="auth-btn" onClick={handleElectionReload}>
+                Reload Ballot
+              </button>
+            </>
+          )}
         </div>
       )}
 

@@ -199,6 +199,76 @@
   margin-bottom: 1rem;
 }
 
+/* Theme Overrides */
+.testing-panel-v2 .panel-header {
+  background: var(--paper-2);
+  color: var(--ink);
+  border: 2px solid var(--line);
+  box-shadow: none;
+}
+
+.testing-panel-v2 .section-card {
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.testing-panel-v2 .section-card h3 {
+  color: var(--ink);
+  border-bottom: 2px solid var(--line);
+}
+
+.testing-panel-v2 .workflow-step {
+  background: var(--paper);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.testing-panel-v2 .workflow-step.step-success {
+  border-color: var(--accent);
+  background: #dff2ec;
+}
+
+.testing-panel-v2 .workflow-step.step-error {
+  border-color: var(--danger);
+  background: #ffe5e5;
+}
+
+.testing-panel-v2 .workflow-step.step-running {
+  border-color: #1d3a4a;
+  background: #dfeaf2;
+}
+
+.testing-panel-v2 .step-number {
+  background: var(--accent);
+}
+
+.testing-panel-v2 .step-error .step-number {
+  background: var(--danger);
+}
+
+.testing-panel-v2 .step-running .step-number {
+  background: #1d3a4a;
+}
+
+.testing-panel-v2 .step-content h4 {
+  color: var(--ink);
+}
+
+.testing-panel-v2 .step-content p,
+.testing-panel-v2 .progress-text {
+  color: var(--ink-muted);
+}
+
+.testing-panel-v2 .progress-bar {
+  background: #efe9da;
+}
+
+.testing-panel-v2 .progress-fill {
+  background: var(--accent);
+}
+
 .testing-panel-v2 .status-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

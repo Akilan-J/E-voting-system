@@ -19,6 +19,10 @@ const api = axios.create({
 // Request interceptor for logging
 api.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -71,9 +75,10 @@ export const resultsAPI = {
 export const opsAPI = {
   getDashboardMetrics: (electionId) => api.get(`/ops/dashboard/${electionId}`),
   downloadEvidence: (electionId) => api.get(`/ops/evidence/${electionId}`, { responseType: 'blob' }),
+  downloadComplianceReport: (electionId) => api.get(`/ops/compliance-report/${electionId}`),
   getIncidents: () => api.get('/ops/incidents'),
-  createIncident: (data) => api.post('/ops/incidents', data, { headers: { 'X-User-Role': 'admin' } }),
-  updateIncident: (id, data) => api.put(`/ops/incidents/${id}`, data, { headers: { 'X-User-Role': 'admin' } }),
+  createIncident: (data) => api.post('/ops/incidents', data),
+  updateIncident: (id, data) => api.put(`/ops/incidents/${id}`, data),
 };
 
 // Verification API (US-62, US-63)
@@ -86,9 +91,17 @@ export const verificationAPI = {
 
 // Security API (US-68, US-64, US-69)
 export const securityAPI = {
-  simulateThreat: (data) => api.post('/security/simulate', data, { headers: { 'X-User-Role': 'admin' } }),
+  simulateThreat: (data) => api.post('/security/simulate', data),
   replayLedger: (electionId) => api.post('/security/replay-ledger', { election_id: electionId }),
   getAnomalies: () => api.get('/security/anomalies'),
+};
+
+// Auth API (non /api prefix)
+export const authAPI = {
+  login: (credential) => axios.post('/auth/login', { credential }),
+  me: () => axios.get('/auth/me', { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
+  listUsers: () => axios.get('/auth/users', { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
+  updateUserRole: (userId, data) => axios.put(`/auth/users/${userId}/role`, data, { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }),
 };
 
 

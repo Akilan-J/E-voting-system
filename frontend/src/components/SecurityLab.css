@@ -197,6 +197,59 @@
     border-radius: 8px;
 }
 
+/* Theme Overrides */
+.security-header h2 {
+    color: var(--ink);
+}
+
+.security-card {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    box-shadow: none;
+}
+
+.card-warning {
+    border-top: 4px solid var(--danger);
+}
+
+.card-info {
+    border-top: 4px solid var(--accent);
+}
+
+.card-audit {
+    border-top: 4px solid #1f2937;
+}
+
+.scenario-select {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+}
+
+.trigger-btn {
+    background: var(--danger);
+}
+
+.terminal-window {
+    background: #101010;
+    color: #b5ffdb;
+    border: 1px solid var(--line);
+}
+
+.anomaly-item {
+    background: #ffe5e5;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--danger);
+}
+
+.anomaly-title,
+.anomaly-meta {
+    color: var(--danger);
+}
+
+.replay-status {
+    background: var(--paper);
+}
+
 .progress-bar {
     height: 8px;
     background: #e2e8f0;

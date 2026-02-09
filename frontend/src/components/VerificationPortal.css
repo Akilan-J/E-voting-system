@@ -11,7 +11,7 @@
 .verification-portal h2 {
     font-size: 1.75rem;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--ink);
     margin-bottom: 1.5rem;
     display: flex;
     align-items: center;
@@ -26,11 +26,10 @@
 
 /* Standard Section Card */
 .verifier-card {
-    background: white;
-    border-radius: 16px;
+    background: var(--paper-2);
+    border-radius: var(--radius-lg);
     padding: 2rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-    border: 1px solid #e8ecf1;
+    border: 1px solid var(--line);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -40,24 +39,24 @@
 }
 
 .verifier-card.ring-2 {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    border-color: var(--accent);
+    box-shadow: none;
 }
 
 .verifier-card h3 {
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--ink);
     padding-bottom: 1rem;
-    border-bottom: 2px solid #e8ecf1;
+    border-bottom: 2px solid var(--line);
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
 .verifier-desc {
-    color: #718096;
+    color: var(--ink-muted);
     margin-bottom: 1.5rem;
     font-size: 0.95rem;
     line-height: 1.6;
@@ -79,27 +78,27 @@
 .verification-input {
     width: 100%;
     padding: 0.75rem 1rem;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 0.9rem;
     transition: all 0.2s ease;
-    background: #f7fafc;
-    color: #2d3748;
+    background: var(--paper-2);
+    color: var(--ink);
 }
 
 .verification-input:focus {
-    border-color: #667eea;
-    background: white;
+    border-color: var(--accent);
+    background: var(--paper-2);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: none;
 }
 
 /* Buttons */
 .verify-btn {
     width: 100%;
     padding: 0.75rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 8px;
@@ -112,7 +111,6 @@
 
 .verify-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
 .verify-btn:disabled {
@@ -124,8 +122,8 @@
 /* Generate Proof Button */
 .generate-proof-btn {
     font-size: 0.85rem;
-    background: #edf2f7;
-    color: #4a5568;
+    background: var(--paper);
+    color: var(--ink-muted);
     border: none;
     border-radius: 6px;
     padding: 0.4rem 0.8rem;
@@ -138,8 +136,8 @@
 }
 
 .generate-proof-btn:hover:not(:disabled) {
-    background: #e2e8f0;
-    color: #2d3748;
+    background: #efe9da;
+    color: var(--ink);
 }
 
 .generate-proof-btn span {
@@ -156,20 +154,19 @@
     margin-top: 2rem;
     padding: 1.5rem;
     border-radius: 12px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: var(--paper-2);
+    border: 1px solid var(--line);
     animation: slideUp 0.3s ease-out;
 }
 
 .result-valid {
-    background: #f0fff4;
-    border-color: #9ae6b4;
+    background: #dff2ec;
+    border-color: var(--accent);
 }
 
 .result-invalid {
-    background: #fff5f5;
-    border-color: #feb2b2;
+    background: #ffe5e5;
+    border-color: var(--danger);
 }
 
 .result-header {
@@ -191,11 +188,11 @@
 }
 
 .valid-text {
-    color: #2f855a;
+    color: var(--accent);
 }
 
 .invalid-text {
-    color: #c53030;
+    color: var(--danger);
 }
 
 .result-details {

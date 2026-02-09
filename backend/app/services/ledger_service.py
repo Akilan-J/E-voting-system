@@ -131,7 +131,7 @@ class LedgerService:
             height=0,
             prev_hash="0" * 64,
             merkle_root="0" * 64,
-            block_hash=self._hash("Genesis Block"),
+            block_hash=self._hash(f"Genesis Block|{election_id}"),
             entry_count=0,
             committed=True,
             commit_cert_hash="Genesis Cert"

@@ -4,6 +4,8 @@ import CryptoVisualizer from './CryptoVisualizer';
 import './TrusteePanel.css';
 
 function TrusteePanel() {
+  const authRole = localStorage.getItem('authRole');
+  const canDecrypt = authRole === 'trustee';
   const [trustees, setTrustees] = useState([]);
   const [tallyStatus, setTallyStatus] = useState(null);
   const [electionId, setElectionId] = useState(null);
@@ -168,7 +170,7 @@ function TrusteePanel() {
                         <span className="badge-icon">✅</span>
                         <span className="badge-text">Decrypted</span>
                       </div>
-                    ) : (
+                    ) : canDecrypt ? (
                       <button
                         className="btn btn-decrypt"
                         onClick={() => handlePartialDecrypt(trustee.trustee_id, trustee.name)}
@@ -183,6 +185,10 @@ function TrusteePanel() {
                           <>🔓 Decrypt</>
                         )}
                       </button>
+                    ) : (
+                      <div className="decrypted-badge">
+                        <span className="badge-text">Trustee-only action</span>
+                      </div>
                     )}
                   </div>
                 </div>

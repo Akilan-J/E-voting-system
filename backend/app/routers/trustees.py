@@ -26,6 +26,8 @@ from app.models.schemas import (
     SuccessResponse
 )
 from app.services import threshold_crypto_service, encryption_service
+from app.utils.auth_utils import require_roles
+from app.models.auth_models import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -34,7 +36,8 @@ logger = logging.getLogger(__name__)
 @router.post("/register", response_model=TrusteeResponse, status_code=status.HTTP_201_CREATED)
 def register_trustee(
     trustee: TrusteeCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
 ):
     """
     Register a new trustee
@@ -80,7 +83,8 @@ def register_trustee(
 def list_trustees(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "trustee", "auditor", "security_engineer"]))
 ):
     """
     List all registered trustees
@@ -107,7 +111,8 @@ def list_trustees(
 @router.get("/{trustee_id}", response_model=TrusteeResponse)
 def get_trustee(
     trustee_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "trustee", "auditor", "security_engineer"]))
 ):
     """
     Get trustee details by ID
@@ -136,7 +141,8 @@ def get_trustee(
 @router.post("/{trustee_id}/key-share", response_model=KeyShareGenerateResponse)
 def generate_key_share(
     trustee_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["trustee"]))
 ):
     """
     Generate and assign key share to a trustee
@@ -198,7 +204,8 @@ def generate_key_share(
 @router.delete("/{trustee_id}", response_model=SuccessResponse)
 def delete_trustee(
     trustee_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
 ):
     """
     Delete a trustee (mark as inactive)

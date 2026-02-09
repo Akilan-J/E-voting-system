@@ -13,7 +13,10 @@ class User(Base):
     # Store hashed identifier from OIDC/SAML or username for local dev
     # For US-1: "Map verified claims to eligibility lookup key (hashed)"
     identity_hash = Column(String(255), unique=True, index=True, nullable=False) 
-    role = Column(String(50), default="voter") # voter, admin, trustee, auditor
+    role = Column(String(50), default="voter") # voter, admin, trustee, auditor, security_engineer
+    # For trustees: how many votes they can verify
+    trustee_vote_limit = Column(Integer, nullable=True)
+    trustee_votes_verified = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     
     # US-2: MFA

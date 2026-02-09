@@ -11,11 +11,11 @@
 
 /* Panel Header */
 .trustee-panel-v2 .panel-header {
-  background: linear-gradient(135deg, #1a365d 0%, #2d5a87 100%);
+  background: var(--paper-2);
   padding: 2rem;
-  border-radius: 16px;
-  color: white;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-lg);
+  color: var(--ink);
+  border: 2px solid var(--line);
 }
 
 .trustee-panel-v2 .header-content h2 {
@@ -51,13 +51,13 @@
 }
 
 .trustee-panel-v2 .alert-success {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  border: 1px solid #34d399;
+  background: #dff2ec;
+  border: 1px solid var(--accent);
 }
 
 .trustee-panel-v2 .alert-error {
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
-  border: 1px solid #f87171;
+  background: #ffe5e5;
+  border: 1px solid var(--danger);
 }
 
 .trustee-panel-v2 .alert-icon {
@@ -82,11 +82,10 @@
 
 /* Status Card */
 .trustee-panel-v2 .status-card {
-  background: white;
-  border-radius: 16px;
+  background: var(--paper-2);
+  border-radius: var(--radius-lg);
   padding: 2rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecf1;
+  border: 1px solid var(--line);
 }
 
 .trustee-panel-v2 .status-header {
@@ -112,18 +111,18 @@
 }
 
 .trustee-panel-v2 .status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
+  background: #f5e9c4;
+  color: #5a4a14;
 }
 
 .trustee-panel-v2 .status-badge.active {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #dfeaf2;
+  color: #1d3a4a;
 }
 
 .trustee-panel-v2 .status-badge.complete {
-  background: #d1fae5;
-  color: #065f46;
+  background: #dff2ec;
+  color: #0b5f59;
 }
 
 /* Progress Section */
@@ -151,17 +150,17 @@
 }
 
 .trustee-panel-v2 .progress-bar-container {
-  height: 24px;
-  background: #e2e8f0;
-  border-radius: 12px;
+  height: 18px;
+  background: #efe9da;
+  border-radius: var(--radius-md);
   overflow: hidden;
   position: relative;
 }
 
 .trustee-panel-v2 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border-radius: 12px;
+  background: var(--accent);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -177,8 +176,8 @@
 }
 
 .trustee-panel-v2 .progress-complete {
-  background: #d1fae5;
-  color: #065f46;
+  background: #dff2ec;
+  color: #0b5f59;
   padding: 0.75rem 1rem;
   border-radius: 8px;
   font-weight: 500;
@@ -187,11 +186,10 @@
 
 /* Trustees Section */
 .trustee-panel-v2 .trustees-section {
-  background: white;
-  border-radius: 16px;
+  background: var(--paper-2);
+  border-radius: var(--radius-lg);
   padding: 2rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e8ecf1;
+  border: 1px solid var(--line);
 }
 
 .trustee-panel-v2 .trustees-section h3 {

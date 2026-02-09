@@ -1,7 +1,7 @@
 /* OpsDashboard.css */
 :root {
-    --primary: #4f46e5;
-    --primary-hover: #4338ca;
+    --primary: #0f766e;
+    --primary-hover: #115e59;
     --secondary: #64748b;
     --success: #10b981;
     --warning: #f59e0b;
@@ -22,7 +22,7 @@
     max-width: 1280px;
     margin: 0 auto;
     padding: 2rem;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
     color: var(--text-main);
 }
 
@@ -51,10 +51,6 @@
     gap: 0.5rem;
 }
 
-.gap-3 {
-    gap: 0.75rem;
-}
-
 .gap-4 {
     gap: 1rem;
 }
@@ -65,10 +61,6 @@
 
 .gap-8 {
     gap: 2rem;
-}
-
-.mb-2 {
-    margin-bottom: 0.5rem;
 }
 
 .mb-4 {
@@ -563,4 +555,53 @@
 
 .status-investigating.status-dot {
     background-color: #6366f1;
+}
+
+.access-card {
+    border: 1px solid var(--border);
+}
+
+.access-table {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.access-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.access-header {
+    background: #f8fafc;
+    font-weight: 700;
+}
+
+.access-row select,
+.access-row input {
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.access-row button {
+    padding: 0.45rem 0.9rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
 }
