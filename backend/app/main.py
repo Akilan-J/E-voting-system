@@ -39,16 +39,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Create tables (if not exists) at module level to avoid async issues
-logger.info("📊 Initializing database tables...")
-Base.metadata.create_all(bind=engine)
-
 def init_demo_data():
     """Sync initialization of demo data"""
     db = next(get_db())
     try:
         from app.models.database import Election
-        from app.models.auth_models import Citizen
+        from app.models.auth_models import Citizen, User
         import uuid
         import hashlib
         
@@ -59,19 +55,18 @@ def init_demo_data():
             logger.info("Creating demo election...")
             now = datetime.utcnow()
             election = Election(
-            election_id=demo_id,
-            title="National General Election 2026",
-             description="Secure, multi-trustee e-voting demonstration",
-            candidates=[
-        {"id": 1, "name": "Alice Johnson", "party": "Progressive"},
-        {"id": 2, "name": "Bob Smith", "party": "Conservative"},
-        {"id": 3, "name": "Charlie Davis", "party": "Independent"}
-    ],
-    start_time=now,
-    end_time=now + timedelta(days=1),
-    status="active"
-)
-
+                election_id=demo_id,
+                title="National General Election 2026",
+                description="Secure, multi-trustee e-voting demonstration",
+                candidates=[
+                    {"id": 1, "name": "Alice Johnson", "party": "Progressive"},
+                    {"id": 2, "name": "Bob Smith", "party": "Conservative"},
+                    {"id": 3, "name": "Charlie Davis", "party": "Independent"}
+                ],
+                start_time=now,
+                end_time=now + timedelta(days=1),
+                status="active"
+            )
             db.add(election)
             db.commit()
 
@@ -85,15 +80,26 @@ def init_demo_data():
                     full_name_hashed=hashlib.sha256(f"Citizen {cred}".encode()).hexdigest(),
                     is_eligible_voter=True
                 ))
+        
+        # 3. Ensure Admin/Trustee Users exist (RBAC)
+        # Admin
+        admin_cred = "admin123"
+        admin_hash = hashlib.sha256(admin_cred.encode()).hexdigest()
+        if not db.query(User).filter(User.identity_hash == admin_hash).first():
+            db.add(User(identity_hash=admin_hash, role="admin"))
+            
+        # Trustees (trustee1..5)
+        for i in range(1, 6):
+            t_cred = f"trustee{i}"
+            t_hash = hashlib.sha256(t_cred.encode()).hexdigest()
+            if not db.query(User).filter(User.identity_hash == t_hash).first():
+                db.add(User(identity_hash=t_hash, role="trustee"))
+
         db.commit()
-        logger.info("✅ Database initialized with demo data")
     except Exception as e:
         logger.error(f"Failed to initialize demo data: {e}")
     finally:
         db.close()
-
-# Run demo data init
-init_demo_data()
 
 
 @asynccontextmanager
@@ -101,6 +107,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info("🚀 Starting E-Voting System - EPIC 4 & 5")
+    
+    # Initialize DB tables and data
+    try:
+        logger.info("📊 Initializing database tables...")
+        Base.metadata.create_all(bind=engine)
+        
+        logger.info("🌱 Seeding demo data...")
+        init_demo_data()
+        
+        logger.info("✅ Database ready")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        # We don't raise here to allow the app to start (though DB endpoints will fail)
     logger.info("🔐 Cryptography services ready")
     
     yield

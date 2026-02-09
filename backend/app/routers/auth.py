@@ -28,22 +28,30 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
     from app.models.auth_models import Citizen
     identity_hash = hash_identity(login_req.credential)
     
-    # 1. First, check the Citizen source of truth (e.g. Aadhaar)
-    citizen = db.query(Citizen).filter(Citizen.identity_hash == identity_hash).first()
-    
-    if not citizen:
-        # Log failed attempt
-        logger.warning(f"Unauthorized login attempt with credential hash: {identity_hash[:10]}...")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Credential not found in national citizen database"
-        )
+    # 0. Check for privileged accounts (Admin/Trustee) first
+    user = db.query(User).filter(User.identity_hash == identity_hash).first()
+    if user and user.role in ["admin", "trustee", "auditor"]:
+        # Privileged users don't need to be in Citizen DB for this demo/system
+        pass
+    else:
+        # 1. For Voters: Check the Citizen source of truth (e.g. Aadhaar)
+        citizen = db.query(Citizen).filter(Citizen.identity_hash == identity_hash).first()
         
-    if not citizen.is_eligible_voter or citizen.is_deceased:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Citizen exists but is not eligible to vote (Inactive or Deceased)"
-        )
+        if not citizen:
+            # Log failed attempt
+            logger.warning(f"Unauthorized login attempt with credential hash: {identity_hash[:10]}...")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Credential not found in national citizen database"
+            )
+        
+    # If not a privileged user, check eligibility
+    if not user:
+        if not citizen.is_eligible_voter or citizen.is_deceased:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Citizen exists but is not eligible to vote (Inactive or Deceased)"
+            )
 
     # 1.5 Risk Analysis
     from app.core.security_core import SecurityRiskAnalyzer, RiskLevel, ImmutableLogger
@@ -56,7 +64,8 @@ def login(login_req: LoginRequest, db: Session = Depends(get_db)):
          raise HTTPException(status_code=403, detail="Login blocked due to high risk assessment")
 
     # 2. Check if local user account exists, if not create it from Citizen data
-    user = db.query(User).filter(User.identity_hash == identity_hash).first()
+    if not user:
+        user = db.query(User).filter(User.identity_hash == identity_hash).first()
 
     if not user:
         # Map citizen to a local voter account
