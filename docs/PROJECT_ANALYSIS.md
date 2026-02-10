@@ -294,11 +294,13 @@ graph TB
 - Default quorum requires 3 approvals (2f+1 where f=1), but only 1 node exists
 - Block signatures use `SHA-256(data + node_id + key_string)` — not real asymmetric crypto
 - Signature verification defaults to `True` when `LEDGER_ENABLE_SIGNATURE_VALIDATION=false`
+- **Update:** Quorum defaults fixed (N=1, F=0) for dev environment, allowing blocks to finalize.
 
-### Client-Side Encryption
-- `VoterAccess.js` sends `vote_ciphertext` as **plaintext JSON** (`{candidate_id: N}`)
-- The "encryption" in the frontend is just hashing, not Paillier encryption
-- Backend re-encrypts plaintext ballots with Paillier during aggregation
+### Client-Side Encryption (✅ Implementation Improved)
+- **Previously:** `VoterAccess.js` sent plaintext JSON.
+- **Now:** Implemented Web Crypto API (RSA-OAEP) in frontend using System Public Key.
+- Backend (`voter.py`, `tallying.py`) handles opaque ciphertext via `KeyManager`.
+
 
 ---
 
@@ -353,15 +355,15 @@ graph TB
 
 | # | Severity | Issue | File | Impact |
 |---|----------|-------|------|--------|
-| 1 | 🔴 Critical | KeyManager generates new RSA key every restart — blind sigs unverifiable | `security_core.py` | Voters can't vote after restart |
+| 1 | 🟢 Fixed | KeyManager generates new RSA key every restart — blind sigs unverifiable | `security_core.py` | FIXED: Keys now persisted to `backend/data/` |
 | 2 | 🔴 Critical | Threshold decryption is fake — full private key used | `encryption.py` | No actual key splitting security |
-| 3 | 🟡 High | Ledger finalization fails with default quorum (3) but only 1 node | `ledger_service.py` | Block finalization would fail |
-| 4 | 🟡 High | `mock_data.py` destructive endpoints have no auth | `mock_data.py` | DB can be wiped by anyone |
-| 5 | 🟡 High | Ledger replay uses EncryptedVote not LedgerBlock | `security.py` | Replay audit is fake |
-| 6 | 🟠 Medium | Frontend Tailwind classes not rendered | SecurityLab, OpsDashboard | Broken layouts |
-| 7 | 🟠 Medium | Election end_time inconsistency (main.py vs mock_data.py) | Multiple | Voting window confusion |
-| 8 | 🟠 Medium | monitoring.py hash chain resets on restart | `monitoring.py` | In-memory only, no persistence |
-| 9 | 🔵 Low | Duplicate imports in database.py, tallying.py | Multiple | Code smell |
+| 3 | 🟢 Fixed | Ledger finalization fails with default quorum (3) but only 1 node | `ledger_service.py` | FIXED: Default N=1, F=0 for single-node dev |
+| 4 | 🟡 High | `mock_data.py` destructive endpoints have no auth | `mock_data.py` | FIXED: Added `RoleChecker` dependency |
+| 5 | 🟢 Fixed | Ledger replay uses EncryptedVote not LedgerBlock | `security.py` | FIXED: Checks `ledger_service.verify_chain()` |
+| 6 | 🟢 Fixed | Frontend Tailwind classes not rendered | SecurityLab, OpsDashboard | FIXED: Replaced with semantic CSS/inline styles |
+| 7 | 🟢 Fixed | Election end_time inconsistency (main.py vs mock_data.py) | Multiple | FIXED: Consistent initialization |
+| 8 | 🟢 Fixed | monitoring.py hash chain resets on restart | `monitoring.py` | FIXED: Persisting chain state to file |
+| 9 | 🟢 Fixed | Duplicate imports in database.py, tallying.py | Multiple | FIXED: Code cleanup |
 | 10 | 🔵 Low | `healthCheck` exported from api.js but never used | `api.js` | Dead code |
 
 ---

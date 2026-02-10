@@ -4,20 +4,16 @@ import axios from 'axios';
 import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
 import './VoterAccess.css';
 
-const VoterAccess = ({ authRole: authRoleProp }) => {
-  const [authRole, setAuthRole] = useState(authRoleProp || localStorage.getItem('authRole'));
-  const [loginMode, setLoginMode] = useState('voter'); // 'voter' or 'admin'
+/* global BigInt */
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
+import './VoterAccess.css';
 
-  // Auto-detect existing auth: skip login if already authenticated as voter
-  const existingToken = localStorage.getItem('authToken');
-  const existingRole = localStorage.getItem('authRole');
-  const initialStep = (existingToken && existingRole === 'voter') ? 'dashboard' : 'login';
+const VoterAccess = ({ authRole }) => {
+  // Use authRole prop directly. No internal login state.
 
-  const [step, setStep] = useState(initialStep);
-  const [identity, setIdentity] = useState('');
-  const [token, setToken] = useState(existingToken || null);
-  const [otp, setOtp] = useState('');
-  const [mfaData, setMfaData] = useState(null);
+  const [step, setStep] = useState('dashboard');
   const [messages, setMessages] = useState([]);
   const [eligibility, setEligibility] = useState(null);
   const [electionData, setElectionData] = useState(null);
@@ -31,9 +27,9 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
   const [voteError, setVoteError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  React.useEffect(() => {
-    setAuthRole(authRoleProp || localStorage.getItem('authRole'));
-  }, [authRoleProp]);
+  // Mfa data for setup
+  const [mfaData, setMfaData] = useState(null);
+  const [otp, setOtp] = useState('');
 
   // Hardcoded election ID for demo purposes
   const electionId = "00000000-0000-0000-0000-000000000001";
@@ -53,10 +49,8 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-
-
   // Fetch election details on mount
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchElection = async () => {
       try {
         setElectionError(null);
@@ -120,49 +114,83 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     return Array.isArray(candidates) ? candidates : [];
   };
 
+
+  const importPublicKey = async (pem) => {
+    // Fetch key from PEM
+    const pemHeader = "-----BEGIN PUBLIC KEY-----";
+    const pemFooter = "-----END PUBLIC KEY-----";
+    const pemContents = pem.substring(
+      pem.indexOf(pemHeader) + pemHeader.length,
+      pem.indexOf(pemFooter)
+    ).replace(/(\r\n|\n|\r)/gm, "");
+
+    // Base64 decode
+    const binaryDerString = window.atob(pemContents);
+    const binaryDer = new Uint8Array(binaryDerString.length);
+    for (let i = 0; i < binaryDerString.length; i++) {
+      binaryDer[i] = binaryDerString.charCodeAt(i);
+    }
+
+    return await window.crypto.subtle.importKey(
+      "spki",
+      binaryDer.buffer,
+      {
+        name: "RSA-OAEP",
+        hash: "SHA-256"
+      },
+      true,
+      ["encrypt"]
+    );
+  };
+
+  const encryptVote = async (data) => {
+    try {
+      // Fetch System Key
+      const keyRes = await axios.get('/api/security/system-key', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+      });
+      const publicKeyPem = keyRes.data.public_key;
+      const publicKey = await importPublicKey(publicKeyPem);
+
+      const encoder = new TextEncoder();
+      const encodedData = encoder.encode(data);
+
+      const encryptedBuffer = await window.crypto.subtle.encrypt(
+        { name: "RSA-OAEP" },
+        publicKey,
+        encodedData
+      );
+
+      // Convert to Base64
+      const encryptedArray = new Uint8Array(encryptedBuffer);
+      let binary = '';
+      for (let i = 0; i < encryptedArray.length; i++) {
+        binary += String.fromCharCode(encryptedArray[i]);
+      }
+      return window.btoa(binary);
+    } catch (e) {
+      log(`Encryption failed: ${e.message}`);
+      throw e;
+    }
+  };
+
   const buildVoteSubmission = async () => {
-    const votePayload = JSON.stringify({
+    // Task 4c: Fix client-side encryption using RSA-OAEP
+    const voteData = JSON.stringify({
       candidate_id: selectedCandidate,
       timestamp: Date.now()
     });
+
+    // Encrypt using System Public Key (RSA-OAEP)
+    // This creates an opaque ciphertext that the backend cannot inspect validation on directly 
+    // until Tally phase (or if backend has private key to peek).
+    const votePayload = await encryptVote(voteData);
+
     const nonce = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
     const voteProof = await hashProof(`${electionId}|${nonce}|${votePayload}`);
     return { votePayload, nonce, voteProof };
   };
 
-  // Real OIDC Login
-  const handleLogin = async () => {
-    log(`Attempting login for: ${identity}`);
-    try {
-      const res = await axios.post('/auth/login', { credential: identity });
-      log("Login response received");
-
-      if (res.data.mfa_required) {
-        // Store the mfa_pending token temporarily — do NOT set authRole to mfa_pending
-        setToken(res.data.access_token);
-        setStep('mfa_login');
-        log("MFA Required — enter your authenticator code");
-      } else {
-        setToken(res.data.access_token);
-        localStorage.setItem('authToken', res.data.access_token);
-        localStorage.setItem('authRole', res.data.role || 'voter');
-        setAuthRole(res.data.role || 'voter');
-        setStep('dashboard');
-        log("Logged in successfully");
-      }
-    } catch (err) {
-      log(`Login Error: ${err.response?.data?.detail || err.message}`);
-    }
-  };
-
-  const resetRestrictedAccess = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authRole');
-    setAuthRole(null);
-    setToken(null);
-    setIdentity('');
-    setStep('login');
-  };
 
   // Real MFA Setup
   const setupMfa = async () => {
@@ -171,7 +199,7 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
       const res = await axios.post(
         '/auth/mfa/setup',
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
       );
       setMfaData(res.data);
       log("MFA Setup initiated. Scan QR code (URI provided).");
@@ -180,26 +208,18 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     }
   };
 
-  // Real MFA Verification — handles both setup activation and login verification
-  const verifyMfa = async () => {
+  // Real MFA Verification for Setup
+  const verifyMfaSetup = async () => {
     log(`Verifying OTP: ${otp}`);
     try {
       const res = await axios.post(
         '/auth/mfa/verify',
         { token: otp },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
       );
-      // Backend now always returns a full token for both setup and login
-      if (res.data.access_token) {
-        setToken(res.data.access_token);
-        localStorage.setItem('authToken', res.data.access_token);
-        localStorage.setItem('authRole', res.data.role || 'voter');
-        setAuthRole(res.data.role || 'voter');
-      }
       setOtp('');
       setMfaData(null);
-      setStep('dashboard');
-      log(res.data.message ? `MFA Setup Complete: ${res.data.message}` : "MFA Verified. Logged in.");
+      log(res.data.message ? `MFA Setup Complete: ${res.data.message}` : "MFA Verified.");
     } catch (err) {
       log(`MFA Verify Error: ${err.response?.data?.detail || err.message}`);
     }
@@ -211,7 +231,7 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     try {
       const res = await axios.get(
         `/api/voter/eligibility/${electionId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
       );
       setEligibility(res.data);
       log(`Eligibility: ${res.data.is_eligible ? "YES" : "NO"} (${res.data.reason_code})`);
@@ -226,7 +246,6 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
       log("You are not eligible to receive a credential.");
       return;
     }
-    log("Requesting blind credential...");
     log("Requesting blind credential...");
     try {
       // Client-side blinding logic would go here.
@@ -250,7 +269,7 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
           election_id: electionId,
           blinded_payload: blindedPayload
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` } }
       );
 
       setSignature(res.data.signature);
@@ -353,128 +372,34 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     );
   }
 
-  // ... (rest of functions)
-
-  // Login View
-  if (step === 'login') {
+  // Restricted access if not voter
+  if (!authRole) {
     return (
-      <div className="login-container">
-        <div className="login-card">
-          <div className="brand-section">
-            <div className="logo-icon">{loginMode === 'voter' ? '🗳️' : '🛡️'}</div>
-            <h1 className="login-title">
-              {loginMode === 'voter' ? 'National E-Voting Portal' : 'Administrative Access'}
-            </h1>
-            <p className="login-subtitle">
-              {loginMode === 'voter' ? 'Secure Identity Verification System' : 'Restricted System Access -- Authorized Personnel Only'}
-            </p>
-          </div>
-
-          <div className="login-form">
-            {authRole && authRole !== 'voter' && (
-              <div className="input-hint" style={{ color: '#b45309' }}>
-                You are currently signed in as {authRole}. Log in as a voter to continue.
-              </div>
-            )}
-            <div className="input-group">
-              <label className="input-label">
-                {loginMode === 'voter' ? 'Digital ID / Email' : 'Admin / Trustee Username'}
-              </label>
-              <input
-                className="input-field"
-                type="text"
-                placeholder={loginMode === 'voter' ? "Enter your Digital ID (voter1-voter5)" : "username"}
-                value={identity}
-                onChange={e => setIdentity(e.target.value)}
-              />
-              {loginMode === 'voter' && (
-                <p className="input-hint">Demo voters: voter1, voter2, voter3, voter4, voter5</p>
-              )}
-            </div>
-
-            <button className={`auth-btn ${loginMode === 'admin' ? 'admin-theme' : ''}`} onClick={handleLogin}>
-              <Lock className="auth-icon" />
-              {loginMode === 'voter' ? 'Authenticate with OIDC' : 'System Login'}
-            </button>
-          </div>
-
-          <div className="admin-link">
-            <button className="admin-login-btn" onClick={() => setLoginMode(loginMode === 'voter' ? 'admin' : 'voter')}>
-              {loginMode === 'voter' ? 'Login as Administrator / Trustee' : 'Return to Voter Login'}
-            </button>
-          </div>
-
-          {loginMode === 'admin' && (
-            <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#666' }}>
-              <p>Demo Config (Hardcoded):</p>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                <li>Admin: <code>admin</code></li>
-                <li>Trustee: <code>trustee</code></li>
-                <li>Auditor: <code>auditor</code></li>
-                <li>Security: <code>security_engineer</code></li>
-              </ul>
-            </div>
-          )}
-
-          <div className="footer-badge">
-            <Shield className="footer-icon" />
-            <span>256-bit Secure System</span>
-          </div>
+      <div className="voter-access project-box">
+        <h2>👤 Voter Access</h2>
+        <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
+          <Lock size={48} color="#6b7280" style={{ marginBottom: '1rem' }} />
+          <h3>Authentication Required</h3>
+          <p>Please log in via the main menu to access voting tools.</p>
         </div>
       </div>
     );
   }
 
-  if (authRole && authRole !== 'voter' && authRole !== 'mfa_pending') {
+  if (authRole !== 'voter') {
     return (
       <div className="voter-access project-box">
         <h2>👤 Voter Access</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
           <AlertCircle size={48} color="#b45309" style={{ marginBottom: '1rem' }} />
           <h3>Restricted Access</h3>
-          <p>Voting tools are available to the voter role only.</p>
-          <button className="auth-btn" style={{ marginTop: '1.5rem' }} onClick={resetRestrictedAccess}>
-            Switch to Voter Login
-          </button>
+          <p>Voting tools are available to the voter role only. You are currently logged in as <strong>{authRole}</strong>.</p>
         </div>
       </div>
     );
   }
 
-  // MFA View
-  if (step === 'mfa_login') {
-    return (
-      <div className="login-container">
-        <div className="login-card">
-          <div className="brand-section">
-            <div className="logo-icon">🔐</div>
-            <h1 className="login-title">Two-Factor Authentication</h1>
-            <p className="login-subtitle">Please enter the code from your authenticator app.</p>
-          </div>
-
-          <div className="login-form">
-            <div className="input-group">
-              <label className="input-label">Authentication Code</label>
-              <input
-                className="input-field"
-                type="text"
-                placeholder="000 000"
-                value={otp}
-                onChange={e => setOtp(e.target.value)}
-                style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '1.2rem' }}
-              />
-            </div>
-
-            <button className="auth-btn" onClick={verifyMfa}>
-              Verify Identity
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Dashboard View
+  // Dashboard View for Voter
   return (
     <div className="voter-access project-box">
       <h2>👤 Voter Access & Credentials</h2>
@@ -483,9 +408,8 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
         <div className="status-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Fingerprint size={16} />
-            <span>Logged in as: <strong>{identity}</strong></span>
+            <span>Logged in as: <strong>Voter</strong></span>
           </div>
-          <button className="refresh-btn" style={{ padding: '4px 12px' }} onClick={() => setStep('login')}>Logout</button>
         </div>
 
         <div className="control-panel">
@@ -507,7 +431,7 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
                   onChange={e => setOtp(e.target.value)}
                   style={{ marginTop: '10px' }}
                 />
-                <button className="auth-btn" style={{ marginTop: '10px' }} onClick={verifyMfa}>Activate 2FA</button>
+                <button className="auth-btn" style={{ marginTop: '10px' }} onClick={verifyMfaSetup}>Activate 2FA</button>
               </div>
             )}
           </div>

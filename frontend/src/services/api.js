@@ -57,6 +57,17 @@ export const tallyingAPI = {
   finalize: (electionId) => api.post('/tally/finalize', { election_id: electionId }),
   getStatus: (electionId) => api.get(`/tally/status/${electionId}`),
   getAggregationInfo: (electionId) => api.get(`/tally/aggregate-info/${electionId}`),
+
+  // New Epic 4 Endpoints
+  getBallotManifest: (electionId) => api.get(`/tally/manifest/${electionId}`),
+  getCircuitBreaker: (electionId) => api.get(`/tally/circuit-breaker/${electionId}`),
+  resetCircuitBreaker: (electionId) => api.post(`/tally/circuit-breaker/${electionId}/reset`),
+  getTranscript: (electionId) => api.get(`/tally/transcript/${electionId}`),
+  getReproducibilityReport: (electionId) => api.get(`/tally/reproducibility/${electionId}`),
+  triggerRecount: (electionId) => api.post(`/tally/recount/${electionId}`),
+  getTrusteeTimeout: (electionId) => api.get(`/tally/trustee-timeout/${electionId}`),
+  getIsolationStatus: () => api.get('/tally/isolation-status'),
+  getElectionTypes: () => api.get('/tally/election-types'),
 };
 
 // Results API

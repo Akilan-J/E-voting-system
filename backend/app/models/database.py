@@ -9,8 +9,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
 from datetime import datetime, timedelta
 
-start_time = datetime.utcnow()
-end_time = start_time + timedelta(days=1)
+# start_time and end_time logic moved to specific routers if needed
+
 
 import os
 import uuid

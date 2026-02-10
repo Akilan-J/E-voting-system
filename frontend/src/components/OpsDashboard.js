@@ -286,15 +286,15 @@ const OpsDashboard = () => {
 
     return (
         <div className="ops-dashboard">
-            <div className="flex justify-between items-center mb-6">
+            <div className="dashboard-header">
                 <h2>🛡️ Ops & Transparency Dashboard</h2>
-                <div className="flex gap-2">
-                    <button className="btn-secondary text-sm" onClick={() => loadIncidents()}>🔄 Refresh</button>
+                <div className="header-actions">
+                    <button className="btn-secondary" onClick={() => loadIncidents()}>🔄 Refresh</button>
                 </div>
             </div>
 
             {/* Top Metrics Section */}
-            <div className="dashboard-grid mb-8">
+            <div className="dashboard-grid">
                 <div className="card pulse-card">
                     <h3>⚡ Election Pulse</h3>
                     {metrics ? (
@@ -321,8 +321,8 @@ const OpsDashboard = () => {
 
                 <div className="card evidence-card">
                     <h3>📦 Audit Artifacts</h3>
-                    <div className="evidence-content text-center">
-                        <p className="text-sm text-gray-500 mb-4">
+                    <div className="evidence-content">
+                        <p className="description-text">
                             Verifiable evidence package including signed manifests, logs, and tally results.
                         </p>
                         {canDownloadArtifacts ? (
@@ -351,9 +351,9 @@ const OpsDashboard = () => {
             </div>
 
             {canAccessControl && (
-                <div className="card access-card mb-8">
+                <div className="card access-card">
                     <h3>🔐 Access Control</h3>
-                    <p className="text-sm text-gray-500">Assign roles and set trustee verification limits.</p>
+                    <p className="description-text">Assign roles and set trustee verification limits.</p>
                     <div className="access-table">
                         <div className="access-row access-header">
                             <span>User ID</span>
@@ -404,7 +404,7 @@ const OpsDashboard = () => {
 
             {/* Main Content Area */}
             <div className="card main-content-card">
-                <div className="flex border-b border-gray-200 mb-6">
+                <div className="tabs-container">
                     <button
                         className={`tab-btn ${activeTab === 'incidents' ? 'active' : ''}`}
                         onClick={() => setActiveTab('incidents')}
@@ -424,8 +424,8 @@ const OpsDashboard = () => {
                 {/* INCIDENTS TAB */}
                 {activeTab === 'incidents' && (
                     <div className="incidents-container">
-                        <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-gray-600 font-bold">Active Incidents</h4>
+                        <div className="section-header">
+                            <h4>Active Incidents</h4>
                             {canReportIncident && (
                                 <button className="action-btn" onClick={() => setShowIncidentModal(true)}>
                                     + Report Incident
@@ -433,9 +433,9 @@ const OpsDashboard = () => {
                             )}
                         </div>
 
-                        <div className="incidents-list-improved">
+                        <div className="incidents-list">
                             {incidents.length === 0 ? (
-                                <div className="text-center text-gray-400 py-8">✅ No open incidents. Systems nominal.</div>
+                                <div className="empty-state">✅ No open incidents. Systems nominal.</div>
                             ) : (
                                 incidents.map(inc => (
                                     <div
@@ -469,11 +469,11 @@ const OpsDashboard = () => {
 
                 {/* DISPUTES TAB */}
                 {activeTab === 'disputes' && canViewDisputes && (
-                    <div className="disputes-section flex gap-8">
-                        <div className="w-1/3 border-r pr-6">
-                            <h4 className="text-lg font-bold mb-4 text-gray-700">File Formal Dispute</h4>
+                    <div className="disputes-layout">
+                        <div className="dispute-form-col">
+                            <h4 className="section-title">File Formal Dispute</h4>
                             {canFileDisputes ? (
-                                <form onSubmit={handleFileDispute} className="space-y-4">
+                                <form onSubmit={handleFileDispute} className="form-stack">
                                     <div>
                                         <label className="form-label">Nature of Dispute</label>
                                         <select className="form-select" value={disputeForm.category} onChange={e => setDisputeForm({ ...disputeForm, category: e.target.value })}>
@@ -493,25 +493,25 @@ const OpsDashboard = () => {
                                     </div>
                                     <div>
                                         <label className="form-label">Formal Justification</label>
-                                        <textarea className="form-textarea h-24" placeholder="Explain why this dispute is valid..." required value={disputeForm.justification} onChange={e => setDisputeForm({ ...disputeForm, justification: e.target.value })} />
+                                        <textarea className="form-textarea" placeholder="Explain why this dispute is valid..." required value={disputeForm.justification} onChange={e => setDisputeForm({ ...disputeForm, justification: e.target.value })} />
                                     </div>
-                                    <div className="bg-yellow-50 p-2 text-xs text-yellow-800 rounded">
+                                    <div className="warning-box">
                                         ⚠️ False disputes may result in credential revocation.
                                     </div>
-                                    <button className="btn-primary w-full py-2">Submit Case</button>
+                                    <button className="btn-primary w-full">Submit Case</button>
                                 </form>
                             ) : (
-                                <p className="text-sm text-gray-500">Dispute filing is restricted to auditors.</p>
+                                <p className="description-text">Dispute filing is restricted to auditors.</p>
                             )}
                         </div>
 
-                        <div className="w-2/3">
-                            <h4 className="text-lg font-bold mb-4 text-gray-700">Active Disputes</h4>
-                            <div className="grid gap-4">
+                        <div className="dispute-list-col">
+                            <h4 className="section-title">Active Disputes</h4>
+                            <div className="disputes-grid">
                                 {disputes.map(dispute => (
                                     <div
                                         key={dispute.dispute_id}
-                                        className="dispute-card p-4 border rounded hover:shadow-md cursor-pointer transition-shadow"
+                                        className="dispute-card"
                                         onClick={() => {
                                             setSelectedDispute(dispute);
                                             setSelectedIncident(null);
@@ -520,17 +520,17 @@ const OpsDashboard = () => {
                                             setShowReviewModal(true);
                                         }}
                                     >
-                                        <div className="flex justify-between mb-2">
-                                            <span className="font-mono text-xs text-gray-500">CASE-{dispute.dispute_id.substring(0, 6)}</span>
+                                        <div className="dispute-header">
+                                            <span className="case-id">CASE-{dispute.dispute_id.substring(0, 6)}</span>
                                             <span className={`badge status-${dispute.status}`}>{dispute.status}</span>
                                         </div>
-                                        <h5 className="font-bold text-lg mb-1">{dispute.title}</h5>
-                                        <p className="text-sm text-gray-600 mb-2">{dispute.description.split('\n')[0]}</p>
-                                        <div className="text-xs text-indigo-600 font-bold">Review Evidence &gt;</div>
+                                        <h5 className="dispute-title">{dispute.title}</h5>
+                                        <p className="dispute-desc">{dispute.description.split('\n')[0]}</p>
+                                        <div className="review-link">Review Evidence &gt;</div>
                                     </div>
                                 ))}
                                 {disputes.length === 0 && (
-                                    <div className="text-center text-gray-400 mt-10">No active disputes filed.</div>
+                                    <div className="empty-state">No active disputes filed.</div>
                                 )}
                             </div>
                         </div>
@@ -542,11 +542,11 @@ const OpsDashboard = () => {
             {showIncidentModal && canReportIncident && (
                 <div className="modal-overlay">
                     <div className="modal-content">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="modal-header">
                             <h3>Report Alert</h3>
                             <button onClick={() => setShowIncidentModal(false)} className="close-btn">✕</button>
                         </div>
-                        <form onSubmit={handleReportIncident} className="space-y-4">
+                        <form onSubmit={handleReportIncident} className="form-stack">
                             <input className="form-input" placeholder="Title" value={newIncident.title} onChange={e => setNewIncident({ ...newIncident, title: e.target.value })} required />
                             <select className="form-select" value={newIncident.severity} onChange={e => setNewIncident({ ...newIncident, severity: e.target.value })}>
                                 <option value="low">Low</option>
@@ -565,8 +565,8 @@ const OpsDashboard = () => {
             {showReviewModal && selectedRecord && (
                 <div className="modal-overlay">
                     <div className="modal-content large-modal">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="flex items-center gap-3">
+                        <div className="modal-header">
+                            <div className="header-title-group">
                                 <h3 className="m-0">{selectedRecord.title}</h3>
                                 {selectedRecord.severity && (
                                     <span className={`badge severity-${selectedRecord.severity}`}>{selectedRecord.severity}</span>
@@ -575,12 +575,12 @@ const OpsDashboard = () => {
                             <button onClick={() => setShowReviewModal(false)} className="close-btn">✕</button>
                         </div>
 
-                        <div className="modal-body space-y-4 mb-6">
+                        <div className="modal-body mb-6">
                             <div className="detail-group">
                                 <label>Description</label>
-                                <div className="p-3 bg-gray-50 rounded text-sm whitespace-pre-wrap">{selectedRecord.description}</div>
+                                <div className="detail-content whitespace-pre-wrap">{selectedRecord.description}</div>
                             </div>
-                            <div className="flex gap-4">
+                            <div className="detail-flex-row">
                                 <div className="detail-group w-1/2">
                                     <label>Reported By</label>
                                     <div className="font-mono text-sm">{selectedRecord.reported_by || selectedRecord.filed_by || 'System'}</div>
@@ -594,12 +594,12 @@ const OpsDashboard = () => {
 
                         <div className="detail-group mb-4">
                             <label>Action Log</label>
-                            <div className="p-3 bg-gray-50 rounded text-sm">
+                            <div className="detail-content">
                                 {(isIncident ? incidentActions : disputeActions).length === 0 ? (
                                     <div className="text-gray-500">No actions recorded yet.</div>
                                 ) : (
                                     (isIncident ? incidentActions : disputeActions).map((action) => (
-                                        <div key={action.action_id} className="flex justify-between border-b py-2">
+                                        <div key={action.action_id} className="action-row">
                                             <span className="font-mono text-xs">{action.action_type}</span>
                                             <span className="text-xs text-gray-500">{new Date(action.created_at).toLocaleString()}</span>
                                         </div>
@@ -610,7 +610,7 @@ const OpsDashboard = () => {
 
                         <div className="detail-group mb-6">
                             <label>Add Note / Evidence</label>
-                            <div className="flex gap-2">
+                            <div className="action-input-group">
                                 <input
                                     className="form-input"
                                     placeholder="Add a note or evidence reference"
@@ -621,13 +621,13 @@ const OpsDashboard = () => {
                             </div>
                         </div>
 
-                        <div className="modal-actions border-t pt-4 flex justify-end gap-3">
+                        <div className="modal-actions">
                             {isIncident && canUpdateIncidentStatus && (
                                 <>
                                     <button className="btn-secondary" onClick={() => handleUpdateIncidentStatus('open')}>Mark Open</button>
                                     <button className="btn-secondary" onClick={() => handleUpdateIncidentStatus('triage')}>Triage</button>
                                     <button className="btn-secondary" onClick={() => handleUpdateIncidentStatus('mitigated')}>Mitigate</button>
-                                    <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateIncidentStatus('resolved')}>Resolve</button>
+                                    <button className="btn-primary success" onClick={() => handleUpdateIncidentStatus('resolved')}>Resolve</button>
                                     <button className="btn-secondary" onClick={handleDownloadIncidentReport}>Download Report</button>
                                 </>
                             )}
@@ -636,7 +636,7 @@ const OpsDashboard = () => {
                                     <button className="btn-secondary" onClick={() => handleUpdateDisputeStatus('open')}>Mark Open</button>
                                     <button className="btn-secondary" onClick={() => handleUpdateDisputeStatus('triage')}>Triage</button>
                                     <button className="btn-secondary" onClick={() => handleUpdateDisputeStatus('investigating')}>Investigate</button>
-                                    <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateDisputeStatus('resolved')}>Resolve</button>
+                                    <button className="btn-primary success" onClick={() => handleUpdateDisputeStatus('resolved')}>Resolve</button>
                                     <button className="btn-secondary" onClick={handleDownloadDisputeReport}>Download Report</button>
                                 </>
                             )}

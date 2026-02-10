@@ -102,13 +102,13 @@ const VerificationPortal = () => {
     };
 
     return (
-        <div className="verification-portal p-4">
+        <div className="verification-portal">
             <h2>🔐 Verification Center</h2>
 
             <div className="portal-grid">
                 {/* Receipt Verifier */}
                 {canReceipt && (
-                    <div className={`section-card verifier-card ${activeTab === 'receipt' ? 'ring-2' : ''}`}
+                    <div className={`verifier-card ${activeTab === 'receipt' ? 'ring-2' : ''}`}
                         onClick={() => setActiveTab('receipt')}>
                         <h3>🧾 Voter Receipt Validator</h3>
                         <p className="verifier-desc">
@@ -138,7 +138,7 @@ const VerificationPortal = () => {
 
                 {/* ZK Proof Verifier */}
                 {canProof && (
-                    <div className={`section-card verifier-card ${activeTab === 'proof' ? 'ring-2' : ''}`}
+                    <div className={`verifier-card ${activeTab === 'proof' ? 'ring-2' : ''}`}
                         onClick={() => setActiveTab('proof')}>
                         <h3>⚡ Zero-Knowledge Proof Check</h3>
                         <p className="verifier-desc">
@@ -146,8 +146,8 @@ const VerificationPortal = () => {
                         </p>
 
                         <div className="input-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <label className="input-label" style={{ marginBottom: 0 }}>Proof Bundle (JSON)</label>
+                            <div className="proof-input-header">
+                                <label className="input-label">Proof Bundle (JSON)</label>
                                 <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleGenerateProof(); }}
@@ -177,8 +177,8 @@ const VerificationPortal = () => {
             </div>
 
             {!canReceipt && !canProof && (
-                <div className="section-card">
-                    <p className="text-sm text-gray-500">Verification tools are not available for this role.</p>
+                <div className="verifier-card">
+                    <p className="no-access-msg">Verification tools are not available for this role.</p>
                 </div>
             )}
 
@@ -226,7 +226,7 @@ const VerificationPortal = () => {
                     )}
 
                     {verificationResult.error && (
-                        <p className="text-red-600 mt-2">{verificationResult.error}</p>
+                        <p className="error-msg">{verificationResult.error}</p>
                     )}
                 </div>
             )}

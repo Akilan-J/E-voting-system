@@ -6,12 +6,13 @@
     gap: 1.5rem;
     max-width: 1200px;
     margin: 0 auto;
+    padding: 2rem;
 }
 
 .verification-portal h2 {
     font-size: 1.75rem;
     font-weight: 600;
-    color: var(--ink);
+    color: #111827;
     margin-bottom: 1.5rem;
     display: flex;
     align-items: center;
@@ -26,10 +27,10 @@
 
 /* Standard Section Card */
 .verifier-card {
-    background: var(--paper-2);
-    border-radius: var(--radius-lg);
+    background: #ffffff;
+    border-radius: 12px;
     padding: 2rem;
-    border: 1px solid var(--line);
+    border: 1px solid #e5e7eb;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -39,24 +40,24 @@
 }
 
 .verifier-card.ring-2 {
-    border-color: var(--accent);
-    box-shadow: none;
+    border-color: #0f766e;
+    box-shadow: 0 0 0 1px #0f766e;
 }
 
 .verifier-card h3 {
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--ink);
+    color: #111827;
     padding-bottom: 1rem;
-    border-bottom: 2px solid var(--line);
+    border-bottom: 2px solid #e5e7eb;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
 .verifier-desc {
-    color: var(--ink-muted);
+    color: #6b7280;
     margin-bottom: 1.5rem;
     font-size: 0.95rem;
     line-height: 1.6;
@@ -70,7 +71,7 @@
 .input-label {
     display: block;
     font-size: 0.9rem;
-    color: #4a5568;
+    color: #4b5563;
     margin-bottom: 0.5rem;
     font-weight: 600;
 }
@@ -78,27 +79,26 @@
 .verification-input {
     width: 100%;
     padding: 0.75rem 1rem;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md);
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 0.9rem;
     transition: all 0.2s ease;
-    background: var(--paper-2);
-    color: var(--ink);
+    background: #ffffff;
+    color: #111827;
 }
 
 .verification-input:focus {
-    border-color: var(--accent);
-    background: var(--paper-2);
+    border-color: #0f766e;
     outline: none;
-    box-shadow: none;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
 }
 
 /* Buttons */
 .verify-btn {
     width: 100%;
     padding: 0.75rem 1.5rem;
-    background: var(--accent);
+    background: #0f766e;
     color: white;
     border: none;
     border-radius: 8px;
@@ -110,34 +110,47 @@
 }
 
 .verify-btn:hover:not(:disabled) {
-    transform: translateY(-2px);
+    background: #115e59;
+    transform: translateY(-1px);
 }
 
 .verify-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    background: #cbd5e0;
+    background: #9ca3af;
+}
+
+/* Proof Header */
+.proof-input-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.proof-input-header .input-label {
+    margin-bottom: 0;
 }
 
 /* Generate Proof Button */
 .generate-proof-btn {
     font-size: 0.85rem;
-    background: var(--paper);
-    color: var(--ink-muted);
-    border: none;
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 0.4rem 0.8rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-weight: 600;
+    font-weight: 500;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
 }
 
 .generate-proof-btn:hover:not(:disabled) {
-    background: #efe9da;
-    color: var(--ink);
+    background: #e5e7eb;
+    color: #111827;
 }
 
 .generate-proof-btn span {
@@ -154,19 +167,19 @@
     margin-top: 2rem;
     padding: 1.5rem;
     border-radius: 12px;
-    background: var(--paper-2);
-    border: 1px solid var(--line);
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
     animation: slideUp 0.3s ease-out;
 }
 
 .result-valid {
-    background: #dff2ec;
-    border-color: var(--accent);
+    background: #ecfdf5;
+    border-color: #10b981;
 }
 
 .result-invalid {
-    background: #ffe5e5;
-    border-color: var(--danger);
+    background: #fef2f2;
+    border-color: #ef4444;
 }
 
 .result-header {
@@ -188,11 +201,11 @@
 }
 
 .valid-text {
-    color: var(--accent);
+    color: #059669;
 }
 
 .invalid-text {
-    color: var(--danger);
+    color: #dc2626;
 }
 
 .result-details {
@@ -211,14 +224,14 @@
 }
 
 .detail-label {
-    color: #718096;
+    color: #6b7280;
     font-weight: 500;
 }
 
 .detail-value {
     font-family: 'Monaco', 'Menlo', monospace;
     font-weight: 600;
-    color: #2d3748;
+    color: #1f2937;
     background: rgba(255, 255, 255, 0.5);
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
@@ -226,8 +239,8 @@
 
 /* Code Preview */
 .code-preview {
-    background: #2d3748;
-    color: #e2e8f0;
+    background: #1f2937;
+    color: #e5e7eb;
     padding: 1rem;
     border-radius: 8px;
     font-family: 'Monaco', 'Menlo', monospace;
@@ -235,7 +248,21 @@
     max-height: 200px;
     overflow-y: auto;
     margin-top: 1rem;
-    border: 1px solid #4a5568;
+    border: 1px solid #374151;
+}
+
+/* Misc Messages */
+.no-access-msg {
+    font-size: 0.875rem;
+    color: #6b7280;
+    text-align: center;
+    padding: 2rem;
+}
+
+.error-msg {
+    color: #dc2626;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
 }
 
 @keyframes slideUp {

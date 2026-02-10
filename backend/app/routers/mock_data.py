@@ -11,17 +11,10 @@ from typing import Optional
 import json
 from datetime import datetime, timedelta
 
-start_time = datetime.utcnow()
-end_time = start_time + timedelta(days=1)
-from datetime import datetime, timedelta
-
-start_time = datetime.utcnow()
-end_time = start_time + timedelta(days=1)
-
-
 from app.models.database import get_db, Election, EncryptedVote, Trustee
 from app.models.schemas import MockVotesGenerateRequest, MockVotesGenerateResponse
 from app.services import encryption_service
+from app.utils.auth import RoleChecker, get_current_active_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -177,7 +170,8 @@ def generate_mock_votes(
 @router.post("/reset-database")
 def reset_database(
     confirm: bool = False,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: str = Depends(RoleChecker(["admin"]))
 ):
     """
     Reset database to initial state (development only)
@@ -309,7 +303,8 @@ def get_citizens(db: Session = Depends(get_db)):
 
 @router.post("/setup-system")
 def setup_system(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: str = Depends(RoleChecker(["admin"]))
 ):
     """
     Complete system initialization:
@@ -335,7 +330,7 @@ def setup_system(
                 {"id": 3, "name": "Charlie Davis", "party": "Independent"}
             ],
             start_time=datetime.utcnow(),
-            end_time=datetime.utcnow(), # Demo ends immediately
+            end_time=datetime.utcnow() + timedelta(days=1), # Demo ends in 1 day
             status="active"
         )
         db.add(election)
@@ -383,7 +378,8 @@ def setup_system(
 
 @router.post("/setup-trustees")
 def setup_test_trustees(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: str = Depends(RoleChecker(["admin"]))
 ):
     """
     Ensure default trustees exist and have key shares

@@ -1,0 +1,343 @@
+/* TallyAudit.css */
+:root {
+    --tally-primary: #7c3aed;
+    --tally-bg: #f5f3ff;
+    --tally-border: #ddd6fe;
+    --success-green: #10b981;
+    --error-red: #ef4444;
+    --warning-amber: #f59e0b;
+}
+
+.tally-audit-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #1f2937;
+}
+
+.tally-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.tally-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.election-id-badge {
+    font-family: 'Monaco', monospace;
+    font-size: 0.875rem;
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    color: #6b7280;
+    font-weight: normal;
+}
+
+/* Tabs */
+.tally-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.tally-tab {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: #6b7280;
+    transition: all 0.2s;
+}
+
+.tally-tab:hover {
+    color: var(--tally-primary);
+    background: #f5f3ff;
+}
+
+.tally-tab.active {
+    color: var(--tally-primary);
+    border-bottom-color: var(--tally-primary);
+}
+
+/* Grid Layout */
+.tally-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+}
+
+/* Cards */
+.tally-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tally-card h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.status-indicator.active {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-indicator.complete {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-indicator.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-indicator.waiting {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Control Buttons */
+.control-btn {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 1rem;
+}
+
+.btn-start {
+    background: var(--tally-primary);
+    color: white;
+}
+
+.btn-start:hover:not(:disabled) {
+    background: #6d28d9;
+}
+
+.btn-danger {
+    background: var(--error-red);
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+.btn-secondary {
+    background: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #f9fafb;
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Progress Bar */
+.tally-progress {
+    margin: 1.5rem 0;
+}
+
+.progress-track {
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--tally-primary);
+    transition: width 0.5s ease;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+/* Circuit Breaker */
+.cb-status {
+    text-align: center;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.cb-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.cb-state {
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.state-closed {
+    color: var(--success-green);
+}
+
+/* Normal operation */
+.state-open {
+    color: var(--error-red);
+}
+
+/* Circuit broken */
+.state-half-open {
+    color: var(--warning-amber);
+}
+
+/* Testing */
+
+/* Code Blocks */
+.code-block {
+    background: #1f2937;
+    color: #e5e7eb;
+    padding: 1rem;
+    border-radius: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 300px;
+}
+
+/* Trustee List */
+.trustee-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.trustee-row:last-child {
+    border-bottom: none;
+}
+
+.trustee-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.trustee-avatar {
+    width: 32px;
+    height: 32px;
+    background: #e0e7ff;
+    color: #4338ca;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.key-share-status {
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.share-present {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.share-missing {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Isolation Status */
+.iso-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.iso-metric {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.iso-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.iso-value {
+    font-weight: 700;
+    color: #111827;
+}
+
+.refresh-btn {
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.refresh-btn:hover {
+    background: #f3f4f6;
+}

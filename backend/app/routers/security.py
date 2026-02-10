@@ -7,6 +7,7 @@ import time
 import os
 import uuid
 import hashlib
+import base64
 from pathlib import Path
 import json
 
@@ -14,7 +15,7 @@ from app.models import get_db, Incident, EncryptedVote, SecurityLog, AuditLog
 from app.models.ledger_models import LedgerBlock, LedgerEvent
 from app.services.monitoring import logging_service
 from app.utils.auth import RoleChecker
-from app.utils.crypto_utils import signer
+from app.core.security_core import KeyManager  # Replaces signer
 from app.models.schemas import (
     ThreatSimulationRequest,
     ThreatSimulationResponse,
@@ -39,7 +40,10 @@ def _artifact_dir(subdir: str) -> Path:
 def _write_signed_report(report: dict, subdir: str, prefix: str) -> dict:
     payload = json.dumps(report, sort_keys=True).encode("utf-8")
     digest = hashlib.sha256(payload).hexdigest()
-    signature = signer.sign_data(report)
+    
+    km = KeyManager.get_instance()
+    signature_bytes = km.sign_data(payload)
+    signature = base64.b64encode(signature_bytes).decode('utf-8')
 
     timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     base_name = f"{prefix}_{timestamp}_{digest[:10]}"
@@ -51,15 +55,23 @@ def _write_signed_report(report: dict, subdir: str, prefix: str) -> dict:
 
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     sig_path.write_text(signature, encoding="utf-8")
-    pub_path.write_text(signer.get_public_key_pem(), encoding="utf-8")
+    pub_path.write_text(km.get_public_key_pem(), encoding="utf-8")
 
     return {
         "artifact": str(report_path.relative_to(target_dir.parents[1])),
         "signature": signature,
-        "public_key": signer.get_public_key_pem(),
+        "public_key": km.get_public_key_pem(),
         "report_hash": digest
     }
 
+@router.get("/system-key")
+async def get_system_public_key():
+    """
+    Returns the system's RSA public key (PEM format).
+    Used for client-side encryption of votes.
+    """
+    km = KeyManager.get_instance()
+    return {"public_key": km.get_public_key_pem()}
 
 # US-68: Threat Simulation Logic
 @router.post("/simulate", response_model=ThreatSimulationResponse)
@@ -149,23 +161,34 @@ async def replay_ledger(
     invalid_blocks = 0
     discrepancies = []
 
-    prev_hash = "GENESIS_HASH"
-
-    for i, vote in enumerate(votes):
-        try:
-            if not vote.encrypted_vote:
-                raise ValueError("Empty vote payload")
-            if request.verify_signatures:
-                pass
-            valid_blocks += 1
-            prev_hash = f"hash_{i}"
-        except Exception as exc:
-            invalid_blocks += 1
-            discrepancies.append({
-                "block_index": i,
-                "vote_id": str(vote.vote_id),
-                "error": str(exc)
-            })
+    # Real verification using Ledger Service
+    from app.services.ledger_service import ledger_service
+    
+    # We verify the chain integrity using the real service
+    result = ledger_service.verify_chain(db, election_id=request.election_id)
+    is_valid = result.get("valid", False)
+    
+    # Get stats
+    total_blocks = len(votes) # Approximate
+    
+    if is_valid:
+        valid_blocks = total_blocks
+        invalid_blocks = 0
+        status_msg = "clean"
+        discrepancies = []
+    else:
+        status_msg = "corrupted"
+        # We don't get exact discrepancy list from verify_chain yet, so we just report the reason
+        invalid_blocks = 1 
+        valid_blocks = total_blocks - 1
+        discrepancies = [{"error": result.get("reason", "Unknown verification failure")}]
+        
+    last_block = votes[-1] if votes else None
+    
+    # Update prev_hash to be the actual tip
+    from app.models.ledger_models import LedgerBlock
+    tip_block = db.query(LedgerBlock).order_by(LedgerBlock.height.desc()).first()
+    prev_hash = tip_block.cur_hash if tip_block else "GENESIS"
 
     duration = (datetime.now() - start_time).total_seconds() * 1000
 

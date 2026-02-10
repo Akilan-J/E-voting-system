@@ -55,10 +55,11 @@ Epic 4 Components:
 - Partial decryption by trustees
 - Final result computation
 
-### 4. Result Verification
-- Merkle tree for ballot integrity
-- Zero-knowledge proofs for correct decryption
-- Blockchain publication for immutability
+### 5. Client-Side Encryption (New in v1.3)
+- Web Crypto API (RSA-OAEP) implementation in frontend
+- System Public Key exposed via API
+- Opaque ciphertext handling in backend
+
 
 ---
 
@@ -203,6 +204,7 @@ pytest              # Unit testing
 | 1.0.0 | Jan 2026 | Initial implementation |
 | 1.1.0 | Jan 2026 | Fixed key mismatch issues |
 | 1.2.0 | Feb 2026 | Added unit tests, documentation |
+| 1.3.0 | Feb 2026 | Added Client-Side RSA Encryption, Ledger Quorum Fix |
 
 ## Actual Code Locations
 

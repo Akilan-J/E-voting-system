@@ -4,6 +4,7 @@ import json
 import sys
 from datetime import datetime
 from typing import Dict, Any, Optional
+from pathlib import Path
 
 class LoggingService:
     """
@@ -22,8 +23,29 @@ class LoggingService:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         
-        self.last_hash = "GENESIS_HASH" # Initialize chain
+        self.state_file = Path(__file__).resolve().parents[2] / "data" / "monitoring_chain.json"
+        self.state_file.parent.mkdir(parents=True, exist_ok=True) # Ensure dir exists
+
+        self.last_hash = self._load_last_hash()
     
+    def _load_last_hash(self) -> str:
+        if self.state_file.exists():
+            try:
+                import json
+                data = json.loads(self.state_file.read_text())
+                return data.get("last_hash", "GENESIS_HASH")
+            except Exception:
+                pass
+        return "GENESIS_HASH"
+
+    def _save_last_hash(self, current_hash: str):
+        try:
+            import json
+            self.state_file.write_text(json.dumps({"last_hash": current_hash}))
+        except Exception as e:
+            # Fallback but don't crash
+            pass
+
     def log_event(
         self, 
         event_type: str, 
@@ -43,7 +65,10 @@ class LoggingService:
         prev_hash = self.last_hash
         chain_input = f"{prev_hash}|{severity}|{event_type}|{payload}"
         current_hash = hashlib.sha256(chain_input.encode()).hexdigest()
-        self.last_hash = current_hash # Update tip
+        
+        # Persist state
+        self.last_hash = current_hash
+        self._save_last_hash(current_hash)
 
         log_entry = {
             "timestamp": datetime.utcnow().isoformat(),

@@ -153,8 +153,25 @@ class TallyingService:
                 pass
 
             # Fallback for demo plaintext ballots (JSON with candidate_id)
+            # OR RSA-Encrypted ballots (Real Client)
             try:
-                decoded = json.loads(vote.encrypted_vote)
+                # Try handling as RSA ciphertext first
+                try:
+                    from app.core.security_core import KeyManager
+                    km = KeyManager.get_instance()
+                    import base64
+                    
+                    # encrypted_vote is Base64 encoded RSA ciphertext
+                    ciphertext_bytes = base64.b64decode(vote.encrypted_vote)
+                    decrypted_bytes = km.decrypt_data(ciphertext_bytes)
+                    decrypted_str = decrypted_bytes.decode('utf-8')
+                    
+                    decoded = json.loads(decrypted_str)
+                except Exception as e_rsa:
+                    # If decryption fails, maybe it was plaintext JSON (legacy/demo)?
+                    # logger.debug(f"RSA decryption failed (maybe plaintext?): {e_rsa}")
+                    decoded = json.loads(vote.encrypted_vote)
+
                 candidate_id = decoded.get("candidate_id")
                 if candidate_id is None:
                     logger.warning("Skipping vote %s: missing candidate_id", vote.vote_id)

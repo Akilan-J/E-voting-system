@@ -10,6 +10,7 @@ import zipfile
 import json
 import logging
 import hashlib
+import base64
 from pathlib import Path
 
 from app.models import (
@@ -34,7 +35,7 @@ from app.models.schemas import (
     DisputeUpdate
 )
 from app.services.monitoring import logging_service
-from app.utils.crypto_utils import signer
+from app.core.security_core import ImmutableLogger, KeyManager
 from app.services.ledger_service import ledger_service
 from app.utils.auth import RoleChecker
 
@@ -74,7 +75,10 @@ def _artifact_dir(subdir: str) -> Path:
 def _write_signed_report(report: Dict[str, Any], subdir: str, prefix: str) -> Dict[str, Any]:
     payload = json.dumps(report, sort_keys=True).encode("utf-8")
     digest = hashlib.sha256(payload).hexdigest()
-    signature = signer.sign_data(report)
+    
+    km = KeyManager.get_instance()
+    signature_bytes = km.sign_data(payload)
+    signature = base64.b64encode(signature_bytes).decode('utf-8')
 
     timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     base_name = f"{prefix}_{timestamp}_{digest[:10]}"
@@ -86,55 +90,15 @@ def _write_signed_report(report: Dict[str, Any], subdir: str, prefix: str) -> Di
 
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     sig_path.write_text(signature, encoding="utf-8")
-    pub_path.write_text(signer.get_public_key_pem(), encoding="utf-8")
+    pub_path.write_text(km.get_public_key_pem(), encoding="utf-8")
 
     return {
         "artifact": str(report_path.relative_to(target_dir.parents[1])),
         "signature": signature,
-        "public_key": signer.get_public_key_pem(),
+        "public_key": km.get_public_key_pem(),
         "report_hash": digest
     }
 
-
-def _append_audit_log(
-    db: Session,
-    *,
-    election_id: UUID = None,
-    operation_type: str,
-    performed_by: str,
-    details: Dict[str, Any],
-    status: str,
-    ip_address: str = None,
-    user_agent: str = None
-) -> AuditLog:
-    last_log = db.query(AuditLog).filter(
-        AuditLog.election_id == election_id
-    ).order_by(AuditLog.timestamp.desc()).first()
-    prev_hash = last_log.current_hash if last_log else "GENESIS_HASH"
-    payload = json.dumps({
-        "operation_type": operation_type,
-        "performed_by": performed_by,
-        "details": details,
-        "status": status,
-        "timestamp": datetime.utcnow().isoformat()
-    }, sort_keys=True)
-    current_hash = hashlib.sha256(f"{prev_hash}|{payload}".encode("utf-8")).hexdigest()
-
-    log = AuditLog(
-        election_id=election_id,
-        operation_type=operation_type,
-        performed_by=performed_by,
-        details=details,
-        status=status,
-        ip_address=ip_address,
-        user_agent=user_agent,
-        previous_hash=prev_hash,
-        current_hash=current_hash
-    )
-    db.add(log)
-    db.commit()
-    db.refresh(log)
-    return log
 
 # US-65: Transparency Dashboard
 @router.get("/dashboard/{election_id}")
@@ -183,6 +147,7 @@ async def get_evidence_package(
         raise HTTPException(status_code=404, detail="Election not found")
 
     result = db.query(ElectionResult).filter(ElectionResult.election_id == election_id).first()
+    km = KeyManager.get_instance()
     
     # Create ZIP in memory
     zip_buffer = io.BytesIO()
@@ -198,9 +163,11 @@ async def get_evidence_package(
         zip_file.writestr("manifest.json", manifest_str)
         
         # 1.1 Sign Manifest (US-66)
-        signature = signer.sign_data(manifest)
+        sig_bytes = km.sign_data(manifest_str.encode("utf-8")) # Sign the JSON string bytes
+        signature = base64.b64encode(sig_bytes).decode('utf-8')
+        
         zip_file.writestr("manifest_signature.txt", signature)
-        zip_file.writestr("public_key.pem", signer.get_public_key_pem())
+        zip_file.writestr("public_key.pem", km.get_public_key_pem())
         
         # 1.2 Verification Instructions (US-66)
         verification_guide = """
@@ -272,13 +239,14 @@ async def create_incident(
         details={"severity": incident.severity}
     )
 
-    _append_audit_log(
+    ImmutableLogger.log(
         db,
         election_id=None,
-        operation_type="incident_created",
-        performed_by=incident.reported_by or "system",
+        operation="incident_created",
+        actor=incident.reported_by or "system",
         details={"incident_id": str(db_incident.incident_id), "severity": incident.severity},
-        status="success"
+        status="success",
+        ip="127.0.0.1" # Placeholder for internal calls
     )
     
     logging_service.log_event("incident_created", "WARNING", {
@@ -323,13 +291,14 @@ async def update_incident(
         }
     )
 
-    _append_audit_log(
+    ImmutableLogger.log(
         db,
         election_id=None,
-        operation_type="incident_updated",
-        performed_by=role,
+        operation="incident_updated",
+        actor=role,
         details={"incident_id": str(incident_id), "status": incident_update.status},
-        status="success"
+        status="success",
+        ip="127.0.0.1"
     )
     
     logging_service.log_event("incident_updated", "INFO", {
@@ -369,13 +338,14 @@ async def add_incident_action(
         details=action.details
     )
 
-    _append_audit_log(
+    ImmutableLogger.log(
         db,
         election_id=None,
-        operation_type="incident_action_added",
-        performed_by=role,
+        operation="incident_action_added",
+        actor=role,
         details={"incident_id": str(incident_id), "action_type": action.action_type},
-        status="success"
+        status="success",
+        ip="127.0.0.1"
     )
 
     return action_entry
@@ -464,13 +434,14 @@ async def create_dispute(
         details={"title": dispute.title}
     )
 
-    _append_audit_log(
+    ImmutableLogger.log(
         db,
-        election_id=db_dispute.election_id,
-        operation_type="dispute_created",
-        performed_by=dispute.filed_by or "system",
+        election_id=str(db_dispute.election_id),
+        operation="dispute_created",
+        actor=dispute.filed_by or "system",
         details={"dispute_id": str(db_dispute.dispute_id), "title": dispute.title},
-        status="success"
+        status="success",
+        ip="127.0.0.1"
     )
 
     logging_service.log_event("dispute_created", "WARNING", {
@@ -518,13 +489,14 @@ async def update_dispute(
         }
     )
 
-    _append_audit_log(
+    ImmutableLogger.log(
         db,
-        election_id=db_dispute.election_id,
-        operation_type="dispute_updated",
-        performed_by=role,
+        election_id=str(db_dispute.election_id),
+        operation="dispute_updated",
+        actor=role,
         details={"dispute_id": str(dispute_id), "status": update.status},
-        status="success"
+        status="success",
+        ip="127.0.0.1"
     )
 
     logging_service.log_event("dispute_updated", "INFO", {

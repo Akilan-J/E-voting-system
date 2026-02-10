@@ -121,16 +121,37 @@ class KeyManager:
         
     def _load_keys(self):
         """
-        Load keys from secure 'storage' (simulated by non-committed path or env var).
+        Load keys from secure 'storage' (simulated by file persistence).
         In PROD: Use AWS KMS / CloudHSM APIs.
         """
-        # For demo, generate if not exists in memory (simulated secure boot)
+        from pathlib import Path
+        key_path = Path("system_keys.pem")
+        
+        if key_path.exists():
+            try:
+                with open(key_path, "rb") as f:
+                    self._rsa_private_key = serialization.load_pem_private_key(
+                        f.read(),
+                        password=None,
+                        backend=default_backend()
+                    )
+            except Exception as e:
+                print(f"Error loading keys: {e}. Generating new ones.")
+                
+        # Generate if not loaded
         if not self._rsa_private_key:
             self._rsa_private_key = rsa.generate_private_key(
                 public_exponent=65537,
                 key_size=2048,
                 backend=default_backend()
             )
+            # Persist
+            with open(key_path, "wb") as f:
+                f.write(self._rsa_private_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption()
+                ))
             
     def get_public_key_pem(self) -> str:
         public_key = self._rsa_private_key.public_key()
@@ -154,6 +175,17 @@ class KeyManager:
                 salt_length=padding.PSS.MAX_LENGTH
             ),
             hashes.SHA256()
+        )
+
+    def decrypt_data(self, ciphertext: bytes) -> bytes:
+        """Standard decryption using KMS key (RSA-OAEP)"""
+        return self._rsa_private_key.decrypt(
+            ciphertext,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
         )
 
 # --- Blind Signatures ---

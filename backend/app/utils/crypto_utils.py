@@ -131,45 +131,6 @@ class Signer:
 # Global Singleton for the application lifespan
 signer = Signer()
 
-# --- Blind Signature Support (From Remote) ---
+# --- Blind Signature Support ---
+# Deprecated: Use BlindSigner in security_core.py instead.
 
-# Global simplified key storage (In reality, use KMS)
-# Generating a key pair for the Issuer
-# Note: In a real app, this should probably share the same key as the Signer or be distinct.
-# For now, we generate a separate key for blind signing to avoid logic conflicts.
-bs_private_key = rsa.generate_private_key(
-    public_exponent=65537,
-    key_size=2048,
-    backend=default_backend()
-)
-bs_public_key = bs_private_key.public_key()
-
-def get_issuer_public_key():
-    pem = bs_public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    return pem.decode('utf-8')
-
-def sign_blinded_message(blinded_message_int: int) -> int:
-    """
-    Performs RSA signing of a blinded message (integer).
-    s' = (m')^d mod n
-    """
-    priv_numbers = bs_private_key.private_numbers()
-    d = priv_numbers.d
-    n = priv_numbers.public_numbers.n
-    
-    signed_int = pow(blinded_message_int, d, n)
-    return signed_int
-
-def verify_signature(message_int: int, signature_int: int) -> bool:
-    """
-    Verifies s^e = m mod n
-    """
-    pub_numbers = bs_public_key.public_numbers()
-    e = pub_numbers.e
-    n = pub_numbers.n
-    
-    calculated_message = pow(signature_int, e, n)
-    return calculated_message == message_int

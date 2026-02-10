@@ -7,6 +7,7 @@ import TestingPanel from './components/TestingPanel';
 import OpsDashboard from './components/OpsDashboard';
 import VerificationPortal from './components/VerificationPortal';
 import SecurityLab from './components/SecurityLab';
+import TallyAudit from './components/TallyAudit';
 import LedgerExplorer from './components/LedgerExplorer';
 import VoterAccess from './components/VoterAccess';
 import axios from 'axios';
@@ -41,10 +42,10 @@ function App() {
   }, []);
 
   const availableTabsByRole = {
-    admin: ['results', 'ledger', 'trustees', 'testing', 'ops', 'verification', 'security'],
-    trustee: ['trustees', 'results', 'ledger', 'verification'],
-    auditor: ['results', 'ledger', 'ops', 'verification'],
-    security_engineer: ['security', 'ops', 'ledger', 'verification'],
+    admin: ['results', 'tally', 'trustees', 'ledger', 'testing', 'ops', 'verification', 'security'],
+    trustee: ['trustees', 'tally', 'results', 'ledger', 'verification'],
+    auditor: ['results', 'tally', 'ledger', 'ops', 'verification'],
+    security_engineer: ['security', 'ops', 'ledger', 'verification', 'tally'],
     voter: ['voter', 'results', 'ledger', 'verification'],
   };
 
@@ -250,6 +251,11 @@ function App() {
             👤 Voter Access
           </button>
         )}
+        {allowedTabs.includes('tally') && (
+          <button className={activeTab === 'tally' ? 'active' : ''} onClick={() => setActiveTab('tally')}>
+            ⚖️ Tally & Audit
+          </button>
+        )}
         {allowedTabs.includes('trustees') && (
           <button className={activeTab === 'trustees' ? 'active' : ''} onClick={() => setActiveTab('trustees')}>
             🔐 Trustees
@@ -267,7 +273,7 @@ function App() {
         )}
         {allowedTabs.includes('ops') && (
           <button className={activeTab === 'ops' ? 'active' : ''} onClick={() => setActiveTab('ops')}>
-            🛡️ Ops & Audit
+            🛡️ Ops Center
           </button>
         )}
         {allowedTabs.includes('verification') && (
@@ -285,6 +291,7 @@ function App() {
       <main className="App-main">
         {activeTab === 'results' && <ResultsDashboard />}
         {activeTab === 'voter' && <VoterAccess authRole={authRole} />}
+        {activeTab === 'tally' && <TallyAudit />}
         {activeTab === 'trustees' && <TrusteePanel />}
         {activeTab === 'ledger' && <LedgerExplorer />}
         {activeTab === 'testing' && <TestingPanel />}

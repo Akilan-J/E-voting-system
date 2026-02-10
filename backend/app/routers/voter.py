@@ -338,20 +338,10 @@ def cast_vote(
         if req.vote_proof != expected_proof:
             raise HTTPException(status_code=400, detail="Invalid vote proof")
 
-    # 5e. Candidate validity (when ciphertext is JSON-encoded in demo)
-    try:
-        decoded = json.loads(req.vote_ciphertext)
-        candidate_id = decoded.get("candidate_id")
-        timestamp = decoded.get("timestamp")
-        if candidate_id is None or timestamp is None:
-            raise HTTPException(status_code=400, detail="Invalid ballot payload")
-        if candidate_id is not None:
-            candidates = election.candidates if isinstance(election.candidates, list) else json.loads(election.candidates)
-            valid_ids = {c["id"] for c in candidates}
-            if candidate_id not in valid_ids:
-                raise HTTPException(status_code=400, detail="Invalid candidate")
-    except json.JSONDecodeError:
-        pass
+    # 5e. Candidate validity - SKIPPED
+    # Payload is now opaque ciphertext (RSA Encrypted), so server cannot validate candidate_id here
+    # without decryption key. Validation happens during tally/decryption phase.
+    pass
 
     # 6. Record Token Usage
     new_token_record = BlindToken(

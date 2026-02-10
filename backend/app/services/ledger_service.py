@@ -28,8 +28,8 @@ class LedgerService:
 
     def __init__(self):
         self.node_id = os.getenv("LEDGER_NODE_ID", "node-1")
-        self.f = int(os.getenv("LEDGER_F", "1"))
-        self.n = int(os.getenv("LEDGER_N", "4"))
+        self.f = int(os.getenv("LEDGER_F", "0"))
+        self.n = int(os.getenv("LEDGER_N", "1"))
         self.quorum = 2 * self.f + 1
         # In a real system, private keys would be in HSM. Here we simulate.
         self.private_key = "simulated_private_key_for_" + self.node_id
