@@ -425,7 +425,7 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     );
   }
 
-  if (authRole && authRole !== 'voter') {
+  if (authRole && authRole !== 'voter' && authRole !== 'mfa_pending') {
     return (
       <div className="voter-access project-box">
         <h2>👤 Voter Access</h2>
