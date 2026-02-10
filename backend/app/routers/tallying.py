@@ -31,6 +31,16 @@ from app.models.schemas import (
 from app.services import tallying_service
 from app.utils.auth_utils import require_roles
 from app.models.auth_models import User
+from app.services.tally_enhancements import (
+    get_circuit_breaker,
+    compute_ballot_manifest,
+    generate_tally_transcript,
+    generate_reproducibility_report,
+    perform_real_recount,
+    get_supported_election_types,
+    TallyIsolationEnforcer,
+    trustee_timeout_manager,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -254,6 +264,142 @@ def get_aggregation_info(
         "session_status": session.status,
         "timestamp": datetime.utcnow()
     }
+
+
+# ---- US-54: Ballot Manifest ----
+
+@router.get("/manifest/{election_id}")
+def get_ballot_manifest(
+    election_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    Compute and return the ballot manifest for an election (US-54).
+    Deterministic ordering ensures reproducibility.
+    """
+    manifest = compute_ballot_manifest(db, str(election_id))
+    if not manifest.get("ballot_count"):
+        raise HTTPException(status_code=404, detail="No ballots found")
+    return manifest
+
+
+# ---- US-53: Circuit Breaker Status ----
+
+@router.get("/circuit-breaker/{election_id}")
+def get_circuit_breaker_status(election_id: UUID):
+    """
+    Get circuit breaker status for the tallying pipeline (US-53).
+    Shows fault count, current state, and recent faults.
+    """
+    cb = get_circuit_breaker(str(election_id))
+    return cb.get_status()
+
+
+@router.post("/circuit-breaker/{election_id}/reset")
+def reset_circuit_breaker(
+    election_id: UUID,
+    current_user: User = Depends(require_roles(["admin"])),
+):
+    """Reset circuit breaker after faults are resolved (admin only)."""
+    cb = get_circuit_breaker(str(election_id))
+    cb.reset()
+    return {"message": "Circuit breaker reset", "status": cb.get_status()}
+
+
+# ---- US-57: Tally Transcript ----
+
+@router.get("/transcript/{election_id}")
+def get_tally_transcript(
+    election_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    Get the formal tally computation transcript (US-57).
+    Includes software hash, params hash, manifest hash, and operation log.
+    """
+    from app.models.database import ElectionResult
+    result = db.query(ElectionResult).filter(
+        ElectionResult.election_id == election_id
+    ).first()
+
+    manifest = compute_ballot_manifest(db, str(election_id))
+    transcript = generate_tally_transcript(
+        db, str(election_id),
+        manifest_hash=manifest["manifest_hash"],
+        final_tally=result.final_tally if result else None,
+    )
+    return transcript
+
+
+# ---- US-59: Reproducibility Report ----
+
+@router.get("/reproducibility/{election_id}")
+def get_reproducibility_report(
+    election_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    Generate a reproducibility report verifying deterministic tally output (US-59).
+    """
+    report = generate_reproducibility_report(db, str(election_id))
+    if "error" in report:
+        raise HTTPException(status_code=404, detail=report["error"])
+    return report
+
+
+# ---- US-52: Real Recount ----
+
+@router.post("/recount/{election_id}")
+def recount_election(
+    election_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "auditor"])),
+):
+    """
+    Perform a real recount by re-aggregating encrypted votes and
+    re-decrypting the tally (US-52). Compares recount output
+    against published results.
+    """
+    report = perform_real_recount(db, str(election_id))
+    if "error" in report:
+        raise HTTPException(status_code=404, detail=report["error"])
+    return report
+
+
+# ---- US-61: Trustee Timeout Status ----
+
+@router.get("/trustee-timeout/{election_id}")
+def get_trustee_timeout_status(
+    election_id: UUID,
+):
+    """
+    Get trustee share collection status including timeout and retry info (US-61).
+    """
+    status = trustee_timeout_manager.check_timeout(str(election_id))
+    if "error" in status:
+        raise HTTPException(status_code=404, detail=status["error"])
+    return status
+
+
+# ---- US-60: Tally Node Isolation ----
+
+@router.get("/isolation-status")
+def get_isolation_status():
+    """
+    Get tally node isolation enforcement status (US-60).
+    Shows network segmentation, allowed endpoints, and enforcement level.
+    """
+    return TallyIsolationEnforcer.get_isolation_status()
+
+
+# ---- US-58: Election Types ----
+
+@router.get("/election-types")
+def get_election_types():
+    """
+    List all supported election types and their configurations (US-58).
+    """
+    return get_supported_election_types()
 
 
 # Import datetime at module level

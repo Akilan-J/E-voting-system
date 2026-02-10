@@ -28,6 +28,15 @@ from app.models import (
 )
 from app.services.encryption import encryption_service
 from app.services.threshold_crypto import threshold_crypto_service
+from app.services.tally_enhancements import (
+    get_circuit_breaker,
+    compute_ballot_manifest,
+    verify_partial_decryption_share,
+    generate_tally_transcript,
+    get_election_type,
+    validate_ballot_for_type,
+    trustee_timeout_manager,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +99,30 @@ class TallyingService:
             raise ValueError("No votes to tally")
         
         logger.info(f"Found {len(encrypted_votes)} votes to aggregate")
+
+        # US-53: Check circuit breaker before proceeding
+        cb = get_circuit_breaker(election_id)
+        can_proceed, cb_reason = cb.allow_publish()
+        if not can_proceed:
+            raise ValueError(f"Circuit breaker is OPEN: {cb_reason}")
+
+        # US-54: Compute ballot manifest for integrity
+        manifest = compute_ballot_manifest(db, election_id)
+        manifest_hash = manifest["manifest_hash"]
+        logger.info(f"Ballot manifest hash: {manifest_hash[:16]}…")
+
+        # Log manifest computation
+        manifest_log = AuditLog(
+            election_id=election_id,
+            operation_type="ballot_manifest",
+            performed_by="system",
+            details={
+                "manifest_hash": manifest_hash,
+                "ballot_count": manifest["ballot_count"],
+            },
+            status="success",
+        )
+        db.add(manifest_log)
         
         # Load public key for aggregation
         if election.encryption_params:
@@ -141,6 +174,12 @@ class TallyingService:
                 encrypted_vote_strings
             )
         except Exception as e:
+            # US-53: Record fault in circuit breaker
+            cb.record_fault(
+                "aggregation_failure",
+                str(e),
+                hashlib.sha256(str(e).encode()).hexdigest(),
+            )
             logger.error(f"Vote aggregation failed: {e}")
             raise ValueError(f"Aggregation failed: {str(e)}")
         
@@ -156,6 +195,15 @@ class TallyingService:
         
         # Update election status
         election.status = "tallying"
+
+        # US-61: Start trustee timeout tracking
+        from app.models import Trustee
+        total_trustees = db.query(Trustee).filter(Trustee.status == "active").count()
+        trustee_timeout_manager.start_collection(
+            election_id,
+            self.threshold_crypto.threshold,
+            total_trustees,
+        )
         
         # Log operation
         log = AuditLog(
@@ -247,6 +295,24 @@ class TallyingService:
             partial_result,
             trustee_id
         )
+
+        # US-48: Deterministic share verification
+        verification = verify_partial_decryption_share(
+            share_data=partial_result,
+            trustee_id=str(trustee_id),
+            aggregated_ciphertext=session.aggregated_ciphertext,
+            share_index=session.completed_trustees + 1,
+        )
+        is_verified = verification.get("verified", False)
+        if not is_verified:
+            # US-53: Record fault in circuit breaker
+            cb = get_circuit_breaker(election_id)
+            cb.record_fault(
+                "invalid_share",
+                f"Trustee {trustee_id}: {verification.get('reason', 'unknown')}",
+                verification.get("evidence_hash", ""),
+            )
+            logger.warning(f"Share verification FAILED for trustee {trustee_id}: {verification}")
         
         # Store partial decryption
         partial_dec = PartialDecryption(
@@ -254,7 +320,7 @@ class TallyingService:
             trustee_id=trustee_id,
             partial_result=partial_result,
             decryption_proof=proof,
-            verified=True  # Auto-verify for now
+            verified=is_verified
         )
         db.add(partial_dec)
         
@@ -262,6 +328,9 @@ class TallyingService:
         session.completed_trustees += 1
         if session.status == "aggregating":
             session.status = "decrypting"
+
+        # US-61: Record share in timeout manager
+        trustee_timeout_manager.record_share(election_id, session.completed_trustees)
         
         # Log operation
         log = AuditLog(
@@ -320,6 +389,12 @@ class TallyingService:
             raise ValueError(
                 f"Insufficient trustees: {session.completed_trustees} < {session.required_trustees}"
             )
+
+        # US-53: Check circuit breaker before finalization
+        cb = get_circuit_breaker(election_id)
+        can_proceed, cb_reason = cb.allow_publish()
+        if not can_proceed:
+            raise ValueError(f"Circuit breaker BLOCKS finalization: {cb_reason}")
         
         # Get all partial decryptions
         partial_decs = db.query(PartialDecryption).filter(
@@ -405,12 +480,22 @@ class TallyingService:
         db.refresh(result)
         
         logger.info(f"Tally finalized successfully. Total votes: {total_votes}")
+
+        # US-57: Generate tally computation transcript
+        manifest = compute_ballot_manifest(db, election_id)
+        transcript = generate_tally_transcript(
+            db, election_id,
+            manifest_hash=manifest["manifest_hash"],
+            final_tally=final_tally,
+        )
+        logger.info(f"Tally transcript generated: {transcript.get('transcript_hash', '')[:16]}…")
         
         return {
             "result_id": result.result_id,
             "final_tally": final_tally,
             "total_votes_tallied": total_votes,
-            "verification_hash": verification_hash
+            "verification_hash": verification_hash,
+            "transcript_hash": transcript.get("transcript_hash", ""),
         }
     
     def _generate_decryption_proof(

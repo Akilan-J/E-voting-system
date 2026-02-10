@@ -165,8 +165,21 @@ def recount_results(
     current_user: User = Depends(require_roles(["admin", "auditor"]))
 ):
     """
-    Recompute verification hash to validate deterministic recount.
+    Perform a real recount by re-aggregating and re-decrypting all encrypted
+    votes (US-52). If re-aggregation is not possible (e.g. keys unavailable),
+    falls back to verification hash recomputation.
     """
+    from app.services.tally_enhancements import perform_real_recount
+
+    # Attempt real recount first
+    try:
+        recount_report = perform_real_recount(db, str(election_id))
+        if "error" not in recount_report:
+            return recount_report
+    except Exception as e:
+        logger.warning(f"Real recount failed, falling back to hash verification: {e}")
+
+    # Fallback: hash-only verification
     result = db.query(ElectionResult).filter(
         ElectionResult.election_id == election_id
     ).first()
@@ -186,7 +199,7 @@ def recount_results(
         election_id=election_id,
         operation_type="recount",
         performed_by=str(current_user.user_id),
-        details={"recomputed_hash": recomputed_hash, "matches": matches},
+        details={"recomputed_hash": recomputed_hash, "matches": matches, "method": "hash_only"},
         status="success" if matches else "mismatch"
     )
     db.add(log)
@@ -195,7 +208,8 @@ def recount_results(
     return {
         "election_id": str(election_id),
         "recomputed_hash": recomputed_hash,
-        "matches": matches
+        "matches": matches,
+        "method": "hash_verification_fallback",
     }
 
 
