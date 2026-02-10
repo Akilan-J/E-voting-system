@@ -195,3 +195,32 @@ class Incident(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolution_notes = Column(Text)
 
+
+class DisputeCase(Base):
+    __tablename__ = "disputes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    dispute_id = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+    election_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text)
+    status = Column(String(50), default="open")  # open, triage, investigating, resolved, rejected
+    filed_by = Column(String(255))
+    evidence = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    resolution_notes = Column(Text)
+
+
+class IncidentAction(Base):
+    __tablename__ = "incident_actions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    action_id = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
+    incident_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    dispute_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+    actor = Column(String(255))
+    action_type = Column(String(100), nullable=False)
+    details = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+

@@ -9,6 +9,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 const OpsDashboard = () => {
     const [metrics, setMetrics] = useState(null);
     const [incidents, setIncidents] = useState([]);
+    const [disputes, setDisputes] = useState([]);
     const [activeTab, setActiveTab] = useState('incidents'); // incidents | disputes
     const [loading, setLoading] = useState(true);
     const [electionId, setElectionId] = useState(null);
@@ -17,6 +18,10 @@ const OpsDashboard = () => {
     const [showIncidentModal, setShowIncidentModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [selectedIncident, setSelectedIncident] = useState(null);
+    const [selectedDispute, setSelectedDispute] = useState(null);
+    const [incidentActions, setIncidentActions] = useState([]);
+    const [disputeActions, setDisputeActions] = useState([]);
+    const [actionNote, setActionNote] = useState('');
     const [users, setUsers] = useState([]);
     const [userUpdate, setUserUpdate] = useState({});
     const authRole = localStorage.getItem('authRole');
@@ -42,6 +47,9 @@ const OpsDashboard = () => {
             if (res.data && res.data.length > 0) setElectionId(res.data[0].election_id);
         });
         loadIncidents();
+        if (canViewDisputes) {
+            loadDisputes();
+        }
         if (canAccessControl) {
             loadUsers();
         }
@@ -74,6 +82,33 @@ const OpsDashboard = () => {
             setIncidents(res.data);
         } catch (err) {
             console.error("Failed to load incidents", err);
+        }
+    };
+
+    const loadDisputes = async () => {
+        try {
+            const res = await opsAPI.getDisputes();
+            setDisputes(res.data);
+        } catch (err) {
+            console.error("Failed to load disputes", err);
+        }
+    };
+
+    const loadIncidentActions = async (id) => {
+        try {
+            const res = await opsAPI.getIncidentActions(id);
+            setIncidentActions(res.data);
+        } catch (err) {
+            console.error("Failed to load incident actions", err);
+        }
+    };
+
+    const loadDisputeActions = async (id) => {
+        try {
+            const res = await opsAPI.getDisputeActions(id);
+            setDisputeActions(res.data);
+        } catch (err) {
+            console.error("Failed to load dispute actions", err);
         }
     };
 
@@ -149,14 +184,15 @@ const OpsDashboard = () => {
         e.preventDefault();
         try {
             const disputeData = {
-                title: `[DISPUTE] ${disputeForm.category}: ${disputeForm.title}`,
-                description: `${disputeForm.description}\n\nJUSTIFICATION:\n${disputeForm.justification}\n\nEVIDENCE:\n${disputeForm.evidence}`,
-                severity: 'high',
-                reported_by: "DemoUser"
+                title: `${disputeForm.category}: ${disputeForm.title}`,
+                description: `${disputeForm.description}\n\nJUSTIFICATION:\n${disputeForm.justification}`,
+                evidence: [disputeForm.evidence],
+                election_id: electionId,
+                filed_by: "DemoUser"
             };
-            await opsAPI.createIncident(disputeData);
+            await opsAPI.createDispute(disputeData);
             setDisputeForm({ title: '', description: '', evidence: '', justification: '', category: 'Tally Mismatch' }); // Reset
-            loadIncidents();
+            loadDisputes();
             alert("Dispute Filed Successfully. Case assigned to Compliance.");
         } catch (err) {
             console.error("Failed to file dispute", err);
@@ -164,7 +200,7 @@ const OpsDashboard = () => {
         }
     };
 
-    const handleUpdateStatus = async (status) => {
+    const handleUpdateIncidentStatus = async (status) => {
         if (!selectedIncident) return;
         try {
             await opsAPI.updateIncident(selectedIncident.incident_id, { status });
@@ -175,7 +211,76 @@ const OpsDashboard = () => {
         }
     };
 
+    const handleUpdateDisputeStatus = async (status) => {
+        if (!selectedDispute) return;
+        try {
+            await opsAPI.updateDispute(selectedDispute.dispute_id, { status });
+            setShowReviewModal(false);
+            loadDisputes();
+        } catch (err) {
+            alert("Failed. Check permissions (Admin/Auditor only).");
+        }
+    };
+
+    const handleAddActionNote = async () => {
+        if (!actionNote.trim()) return;
+        try {
+            if (selectedIncident) {
+                await opsAPI.addIncidentAction(selectedIncident.incident_id, {
+                    action_type: 'NOTE',
+                    details: { note: actionNote }
+                });
+                loadIncidentActions(selectedIncident.incident_id);
+            }
+            if (selectedDispute) {
+                await opsAPI.updateDispute(selectedDispute.dispute_id, {
+                    evidence: [actionNote]
+                });
+                loadDisputeActions(selectedDispute.dispute_id);
+            }
+            setActionNote('');
+        } catch (err) {
+            alert("Failed to add action note");
+        }
+    };
+
+    const handleDownloadIncidentReport = async () => {
+        if (!selectedIncident) return;
+        try {
+            const response = await opsAPI.downloadIncidentReport(selectedIncident.incident_id);
+            const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `incident_${selectedIncident.incident_id}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error("Incident report download failed", err);
+        }
+    };
+
+    const handleDownloadDisputeReport = async () => {
+        if (!selectedDispute) return;
+        try {
+            const response = await opsAPI.downloadDisputeReport(selectedDispute.dispute_id);
+            const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `dispute_${selectedDispute.dispute_id}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error("Dispute report download failed", err);
+        }
+    };
+
     const roleOptions = ['voter', 'admin', 'trustee', 'auditor', 'security_engineer'];
+    const selectedRecord = selectedIncident || selectedDispute;
+    const isIncident = Boolean(selectedIncident);
 
     if (loading && !electionId) return <div className="loading"><div className="spinner"></div>Loading Dashboard...</div>;
 
@@ -329,11 +434,21 @@ const OpsDashboard = () => {
                         </div>
 
                         <div className="incidents-list-improved">
-                            {incidents.filter(i => !i.title.startsWith('[DISPUTE]')).length === 0 ? (
+                            {incidents.length === 0 ? (
                                 <div className="text-center text-gray-400 py-8">✅ No open incidents. Systems nominal.</div>
                             ) : (
-                                incidents.filter(i => !i.title.startsWith('[DISPUTE]')).map(inc => (
-                                    <div key={inc.incident_id} className={`incident-row severity-${inc.severity}`} onClick={() => { setSelectedIncident(inc); setShowReviewModal(true); }}>
+                                incidents.map(inc => (
+                                    <div
+                                        key={inc.incident_id}
+                                        className={`incident-row severity-${inc.severity}`}
+                                        onClick={() => {
+                                            setSelectedIncident(inc);
+                                            setSelectedDispute(null);
+                                            setActionNote('');
+                                            loadIncidentActions(inc.incident_id);
+                                            setShowReviewModal(true);
+                                        }}
+                                    >
                                         <div className="incident-meta">
                                             <span className={`badge severity-${inc.severity}`}>{inc.severity}</span>
                                             <span className="timestamp">{new Date(inc.created_at).toLocaleTimeString()}</span>
@@ -393,18 +508,28 @@ const OpsDashboard = () => {
                         <div className="w-2/3">
                             <h4 className="text-lg font-bold mb-4 text-gray-700">Active Disputes</h4>
                             <div className="grid gap-4">
-                                {incidents.filter(i => i.title.startsWith('[DISPUTE]')).map(inc => (
-                                    <div key={inc.incident_id} className="dispute-card p-4 border rounded hover:shadow-md cursor-pointer transition-shadow" onClick={() => { setSelectedIncident(inc); setShowReviewModal(true); }}>
+                                {disputes.map(dispute => (
+                                    <div
+                                        key={dispute.dispute_id}
+                                        className="dispute-card p-4 border rounded hover:shadow-md cursor-pointer transition-shadow"
+                                        onClick={() => {
+                                            setSelectedDispute(dispute);
+                                            setSelectedIncident(null);
+                                            setActionNote('');
+                                            loadDisputeActions(dispute.dispute_id);
+                                            setShowReviewModal(true);
+                                        }}
+                                    >
                                         <div className="flex justify-between mb-2">
-                                            <span className="font-mono text-xs text-gray-500">CASE-{inc.incident_id.substring(0, 6)}</span>
-                                            <span className={`badge status-${inc.status}`}>{inc.status}</span>
+                                            <span className="font-mono text-xs text-gray-500">CASE-{dispute.dispute_id.substring(0, 6)}</span>
+                                            <span className={`badge status-${dispute.status}`}>{dispute.status}</span>
                                         </div>
-                                        <h5 className="font-bold text-lg mb-1">{inc.title}</h5>
-                                        <p className="text-sm text-gray-600 mb-2">{inc.description.split('\n')[0]}</p>
+                                        <h5 className="font-bold text-lg mb-1">{dispute.title}</h5>
+                                        <p className="text-sm text-gray-600 mb-2">{dispute.description.split('\n')[0]}</p>
                                         <div className="text-xs text-indigo-600 font-bold">Review Evidence &gt;</div>
                                     </div>
                                 ))}
-                                {incidents.filter(i => i.title.startsWith('[DISPUTE]')).length === 0 && (
+                                {disputes.length === 0 && (
                                     <div className="text-center text-gray-400 mt-10">No active disputes filed.</div>
                                 )}
                             </div>
@@ -437,13 +562,15 @@ const OpsDashboard = () => {
             )}
 
             {/* MODAL: Review Incident/Dispute */}
-            {showReviewModal && selectedIncident && (
+            {showReviewModal && selectedRecord && (
                 <div className="modal-overlay">
                     <div className="modal-content large-modal">
                         <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-3">
-                                <h3 className="m-0">{selectedIncident.title}</h3>
-                                <span className={`badge severity-${selectedIncident.severity}`}>{selectedIncident.severity}</span>
+                                <h3 className="m-0">{selectedRecord.title}</h3>
+                                {selectedRecord.severity && (
+                                    <span className={`badge severity-${selectedRecord.severity}`}>{selectedRecord.severity}</span>
+                                )}
                             </div>
                             <button onClick={() => setShowReviewModal(false)} className="close-btn">✕</button>
                         </div>
@@ -451,28 +578,69 @@ const OpsDashboard = () => {
                         <div className="modal-body space-y-4 mb-6">
                             <div className="detail-group">
                                 <label>Description</label>
-                                <div className="p-3 bg-gray-50 rounded text-sm whitespace-pre-wrap">{selectedIncident.description}</div>
+                                <div className="p-3 bg-gray-50 rounded text-sm whitespace-pre-wrap">{selectedRecord.description}</div>
                             </div>
                             <div className="flex gap-4">
                                 <div className="detail-group w-1/2">
                                     <label>Reported By</label>
-                                    <div className="font-mono text-sm">{selectedIncident.reported_by || 'System'}</div>
+                                    <div className="font-mono text-sm">{selectedRecord.reported_by || selectedRecord.filed_by || 'System'}</div>
                                 </div>
                                 <div className="detail-group w-1/2">
                                     <label>Timestamp</label>
-                                    <div className="font-mono text-sm">{new Date(selectedIncident.created_at).toLocaleString()}</div>
+                                    <div className="font-mono text-sm">{new Date(selectedRecord.created_at).toLocaleString()}</div>
                                 </div>
                             </div>
                         </div>
 
+                        <div className="detail-group mb-4">
+                            <label>Action Log</label>
+                            <div className="p-3 bg-gray-50 rounded text-sm">
+                                {(isIncident ? incidentActions : disputeActions).length === 0 ? (
+                                    <div className="text-gray-500">No actions recorded yet.</div>
+                                ) : (
+                                    (isIncident ? incidentActions : disputeActions).map((action) => (
+                                        <div key={action.action_id} className="flex justify-between border-b py-2">
+                                            <span className="font-mono text-xs">{action.action_type}</span>
+                                            <span className="text-xs text-gray-500">{new Date(action.created_at).toLocaleString()}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="detail-group mb-6">
+                            <label>Add Note / Evidence</label>
+                            <div className="flex gap-2">
+                                <input
+                                    className="form-input"
+                                    placeholder="Add a note or evidence reference"
+                                    value={actionNote}
+                                    onChange={(e) => setActionNote(e.target.value)}
+                                />
+                                <button className="btn-secondary" onClick={handleAddActionNote}>Add</button>
+                            </div>
+                        </div>
+
                         <div className="modal-actions border-t pt-4 flex justify-end gap-3">
-                            {canUpdateIncidentStatus ? (
+                            {isIncident && canUpdateIncidentStatus && (
                                 <>
-                                    <button className="btn-secondary" onClick={() => handleUpdateStatus('open')}>Mark Open</button>
-                                    <button className="btn-secondary" onClick={() => handleUpdateStatus('investigating')}>Investigate</button>
-                                    <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateStatus('resolved')}>Resolve Issue</button>
+                                    <button className="btn-secondary" onClick={() => handleUpdateIncidentStatus('open')}>Mark Open</button>
+                                    <button className="btn-secondary" onClick={() => handleUpdateIncidentStatus('triage')}>Triage</button>
+                                    <button className="btn-secondary" onClick={() => handleUpdateIncidentStatus('mitigated')}>Mitigate</button>
+                                    <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateIncidentStatus('resolved')}>Resolve</button>
+                                    <button className="btn-secondary" onClick={handleDownloadIncidentReport}>Download Report</button>
                                 </>
-                            ) : (
+                            )}
+                            {!isIncident && canUpdateIncidentStatus && (
+                                <>
+                                    <button className="btn-secondary" onClick={() => handleUpdateDisputeStatus('open')}>Mark Open</button>
+                                    <button className="btn-secondary" onClick={() => handleUpdateDisputeStatus('triage')}>Triage</button>
+                                    <button className="btn-secondary" onClick={() => handleUpdateDisputeStatus('investigating')}>Investigate</button>
+                                    <button className="btn-primary bg-green-600 border-green-600" onClick={() => handleUpdateDisputeStatus('resolved')}>Resolve</button>
+                                    <button className="btn-secondary" onClick={handleDownloadDisputeReport}>Download Report</button>
+                                </>
+                            )}
+                            {!canUpdateIncidentStatus && (
                                 <span className="text-sm text-gray-500">Status updates are restricted to admin and auditor roles.</span>
                             )}
                         </div>

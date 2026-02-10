@@ -13,7 +13,9 @@ from app.models.database import (
 
     VerificationProof,
     TallyingSession,
-    Incident
+    Incident,
+    DisputeCase,
+    IncidentAction
 )
 from app.models.ledger_models import (
     LedgerNode,
@@ -46,6 +48,8 @@ __all__ = [
     "VerificationProof",
     "TallyingSession",
     "Incident",
+    "DisputeCase",
+    "IncidentAction",
     "LedgerNode",
     "LedgerBlock",
     "LedgerEntry",

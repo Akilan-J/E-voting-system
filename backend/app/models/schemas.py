@@ -225,6 +225,52 @@ class IncidentUpdate(BaseModel):
     resolution_notes: Optional[str] = None
 
 
+class IncidentActionCreate(BaseModel):
+    action_type: str
+    details: Optional[Dict[str, Any]] = None
+
+
+class IncidentActionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    action_id: UUID
+    incident_id: Optional[UUID] = None
+    dispute_id: Optional[UUID] = None
+    actor: Optional[str] = None
+    action_type: str
+    details: Optional[Dict[str, Any]] = None
+    created_at: datetime
+
+
+class DisputeCreate(BaseModel):
+    title: str
+    description: str
+    evidence: Optional[List[str]] = None
+    election_id: Optional[UUID] = None
+    filed_by: Optional[str] = None
+
+
+class DisputeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    dispute_id: UUID
+    election_id: Optional[UUID] = None
+    title: str
+    description: str
+    status: str
+    filed_by: Optional[str] = None
+    evidence: Optional[List[str]] = None
+    created_at: datetime
+    updated_at: datetime
+    resolution_notes: Optional[str] = None
+
+
+class DisputeUpdate(BaseModel):
+    status: Optional[str] = None
+    resolution_notes: Optional[str] = None
+    evidence: Optional[List[str]] = None
+
+
 # US-62: Receipt Verification Schemas
 class ReceiptVerificationRequest(BaseModel):
     receipt_hash: str
@@ -261,10 +307,12 @@ class ThreatSimulationRequest(BaseModel):
 
 class ThreatSimulationResponse(BaseModel):
     simulation_id: str
+    correlation_id: str
     scenario_type: str
     status: str
     logs: List[str]
     detected_by_ids: bool
+    evidence_hashes: List[str]
 
 
 # US-64/US-74: Replay & Audit Schemas
@@ -281,6 +329,35 @@ class LedgerReplayResponse(BaseModel):
     recomputation_time_ms: float
     status: str  # clean, corrupted
     discrepancies: List[Dict[str, Any]]
+
+
+class TimelineEvent(BaseModel):
+    timestamp: datetime
+    subsystem: str
+    event_type: str
+    reference_id: Optional[str] = None
+    details_hash: Optional[str] = None
+
+
+class TimelineReportResponse(BaseModel):
+    election_id: Optional[UUID] = None
+    generated_at: datetime
+    total_events: int
+    timeline_hash: str
+    events: List[TimelineEvent]
+    signature: str
+    public_key: str
+    artifact: Optional[str] = None
+
+
+class AnomalyReportResponse(BaseModel):
+    generated_at: datetime
+    window_minutes: int
+    anomalies: List[Dict[str, Any]]
+    report_hash: str
+    signature: str
+    public_key: str
+    artifact: Optional[str] = None
 
 
 # Anonymous Voting Schemas

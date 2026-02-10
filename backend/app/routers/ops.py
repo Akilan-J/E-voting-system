@@ -9,9 +9,30 @@ import io
 import zipfile
 import json
 import logging
+import hashlib
+from pathlib import Path
 
-from app.models import get_db, Election, ElectionResult, EncryptedVote, Trustee, Incident, AuditLog
-from app.models.schemas import IncidentResponse, IncidentCreate, IncidentUpdate
+from app.models import (
+    get_db,
+    Election,
+    ElectionResult,
+    EncryptedVote,
+    Trustee,
+    Incident,
+    AuditLog,
+    DisputeCase,
+    IncidentAction
+)
+from app.models.schemas import (
+    IncidentResponse,
+    IncidentCreate,
+    IncidentUpdate,
+    IncidentActionCreate,
+    IncidentActionResponse,
+    DisputeCreate,
+    DisputeResponse,
+    DisputeUpdate
+)
 from app.services.monitoring import logging_service
 from app.utils.crypto_utils import signer
 from app.services.ledger_service import ledger_service
@@ -19,6 +40,101 @@ from app.utils.auth import RoleChecker
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _log_action(
+    db: Session,
+    *,
+    incident_id: UUID = None,
+    dispute_id: UUID = None,
+    actor: str = None,
+    action_type: str,
+    details: Dict[str, Any] = None
+) -> IncidentAction:
+    action = IncidentAction(
+        incident_id=incident_id,
+        dispute_id=dispute_id,
+        actor=actor,
+        action_type=action_type,
+        details=details or {}
+    )
+    db.add(action)
+    db.commit()
+    db.refresh(action)
+    return action
+
+
+def _artifact_dir(subdir: str) -> Path:
+    root = Path(__file__).resolve().parents[3]
+    path = root / "artifacts" / subdir
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _write_signed_report(report: Dict[str, Any], subdir: str, prefix: str) -> Dict[str, Any]:
+    payload = json.dumps(report, sort_keys=True).encode("utf-8")
+    digest = hashlib.sha256(payload).hexdigest()
+    signature = signer.sign_data(report)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    base_name = f"{prefix}_{timestamp}_{digest[:10]}"
+    target_dir = _artifact_dir(subdir)
+
+    report_path = target_dir / f"{base_name}.json"
+    sig_path = target_dir / f"{base_name}.sig"
+    pub_path = target_dir / f"{base_name}.pub"
+
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    sig_path.write_text(signature, encoding="utf-8")
+    pub_path.write_text(signer.get_public_key_pem(), encoding="utf-8")
+
+    return {
+        "artifact": str(report_path.relative_to(target_dir.parents[1])),
+        "signature": signature,
+        "public_key": signer.get_public_key_pem(),
+        "report_hash": digest
+    }
+
+
+def _append_audit_log(
+    db: Session,
+    *,
+    election_id: UUID = None,
+    operation_type: str,
+    performed_by: str,
+    details: Dict[str, Any],
+    status: str,
+    ip_address: str = None,
+    user_agent: str = None
+) -> AuditLog:
+    last_log = db.query(AuditLog).filter(
+        AuditLog.election_id == election_id
+    ).order_by(AuditLog.timestamp.desc()).first()
+    prev_hash = last_log.current_hash if last_log else "GENESIS_HASH"
+    payload = json.dumps({
+        "operation_type": operation_type,
+        "performed_by": performed_by,
+        "details": details,
+        "status": status,
+        "timestamp": datetime.utcnow().isoformat()
+    }, sort_keys=True)
+    current_hash = hashlib.sha256(f"{prev_hash}|{payload}".encode("utf-8")).hexdigest()
+
+    log = AuditLog(
+        election_id=election_id,
+        operation_type=operation_type,
+        performed_by=performed_by,
+        details=details,
+        status=status,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        previous_hash=prev_hash,
+        current_hash=current_hash
+    )
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
 
 # US-65: Transparency Dashboard
 @router.get("/dashboard/{election_id}")
@@ -147,6 +263,23 @@ async def create_incident(
     db.add(db_incident)
     db.commit()
     db.refresh(db_incident)
+
+    _log_action(
+        db,
+        incident_id=db_incident.incident_id,
+        actor=incident.reported_by,
+        action_type="INCIDENT_CREATED",
+        details={"severity": incident.severity}
+    )
+
+    _append_audit_log(
+        db,
+        election_id=None,
+        operation_type="incident_created",
+        performed_by=incident.reported_by or "system",
+        details={"incident_id": str(db_incident.incident_id), "severity": incident.severity},
+        status="success"
+    )
     
     logging_service.log_event("incident_created", "WARNING", {
         "incident_id": str(db_incident.incident_id),
@@ -166,6 +299,10 @@ async def update_incident(
     db_incident = db.query(Incident).filter(Incident.incident_id == incident_id).first()
     if not db_incident:
         raise HTTPException(status_code=404, detail="Incident not found")
+
+    allowed_statuses = {"open", "triage", "mitigated", "resolved"}
+    if incident_update.status and incident_update.status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid incident status")
     
     if incident_update.status:
         db_incident.status = incident_update.status
@@ -174,6 +311,26 @@ async def update_incident(
         
     db.commit()
     db.refresh(db_incident)
+
+    _log_action(
+        db,
+        incident_id=incident_id,
+        actor=role,
+        action_type="INCIDENT_STATUS_CHANGED",
+        details={
+            "status": incident_update.status,
+            "resolution_notes": incident_update.resolution_notes
+        }
+    )
+
+    _append_audit_log(
+        db,
+        election_id=None,
+        operation_type="incident_updated",
+        performed_by=role,
+        details={"incident_id": str(incident_id), "status": incident_update.status},
+        status="success"
+    )
     
     logging_service.log_event("incident_updated", "INFO", {
         "incident_id": str(incident_id),
@@ -181,6 +338,260 @@ async def update_incident(
     })
     
     return db_incident
+
+@router.get("/incidents/{incident_id}/actions", response_model=List[IncidentActionResponse])
+async def get_incident_actions(
+    incident_id: UUID,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor", "security_engineer"]))
+):
+    actions = db.query(IncidentAction).filter(
+        IncidentAction.incident_id == incident_id
+    ).order_by(IncidentAction.created_at.asc()).all()
+    return actions
+
+@router.post("/incidents/{incident_id}/actions", response_model=IncidentActionResponse)
+async def add_incident_action(
+    incident_id: UUID,
+    action: IncidentActionCreate,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor", "security_engineer"]))
+):
+    db_incident = db.query(Incident).filter(Incident.incident_id == incident_id).first()
+    if not db_incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    action_entry = _log_action(
+        db,
+        incident_id=incident_id,
+        actor=role,
+        action_type=action.action_type,
+        details=action.details
+    )
+
+    _append_audit_log(
+        db,
+        election_id=None,
+        operation_type="incident_action_added",
+        performed_by=role,
+        details={"incident_id": str(incident_id), "action_type": action.action_type},
+        status="success"
+    )
+
+    return action_entry
+
+@router.get("/incidents/{incident_id}/report")
+async def export_incident_report(
+    incident_id: UUID,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    incident = db.query(Incident).filter(Incident.incident_id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    actions = db.query(IncidentAction).filter(
+        IncidentAction.incident_id == incident_id
+    ).order_by(IncidentAction.created_at.asc()).all()
+
+    report = {
+        "incident": {
+            "incident_id": str(incident.incident_id),
+            "title": incident.title,
+            "description": incident.description,
+            "severity": incident.severity,
+            "status": incident.status,
+            "reported_by": incident.reported_by,
+            "created_at": incident.created_at.isoformat(),
+            "updated_at": incident.updated_at.isoformat()
+        },
+        "actions": [
+            {
+                "action_id": str(action.action_id),
+                "action_type": action.action_type,
+                "actor": action.actor,
+                "details": action.details,
+                "created_at": action.created_at.isoformat()
+            }
+            for action in actions
+        ],
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
+    signed = _write_signed_report(report, "incident_reports", f"incident_{incident.incident_id}")
+    report.update({
+        "signature": signed["signature"],
+        "public_key": signed["public_key"],
+        "report_hash": signed["report_hash"],
+        "artifact": signed["artifact"]
+    })
+    return report
+
+@router.get("/disputes", response_model=List[DisputeResponse])
+async def get_disputes(
+    status: str = None,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    query = db.query(DisputeCase)
+    if status:
+        query = query.filter(DisputeCase.status == status)
+    return query.order_by(DisputeCase.created_at.desc()).all()
+
+@router.post("/disputes", response_model=DisputeResponse)
+async def create_dispute(
+    dispute: DisputeCreate,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    db_dispute = DisputeCase(
+        election_id=dispute.election_id,
+        title=dispute.title,
+        description=dispute.description,
+        status="open",
+        filed_by=dispute.filed_by,
+        evidence=dispute.evidence or []
+    )
+    db.add(db_dispute)
+    db.commit()
+    db.refresh(db_dispute)
+
+    _log_action(
+        db,
+        dispute_id=db_dispute.dispute_id,
+        actor=dispute.filed_by,
+        action_type="DISPUTE_CREATED",
+        details={"title": dispute.title}
+    )
+
+    _append_audit_log(
+        db,
+        election_id=db_dispute.election_id,
+        operation_type="dispute_created",
+        performed_by=dispute.filed_by or "system",
+        details={"dispute_id": str(db_dispute.dispute_id), "title": dispute.title},
+        status="success"
+    )
+
+    logging_service.log_event("dispute_created", "WARNING", {
+        "dispute_id": str(db_dispute.dispute_id),
+        "status": db_dispute.status
+    })
+
+    return db_dispute
+
+@router.put("/disputes/{dispute_id}", response_model=DisputeResponse)
+async def update_dispute(
+    dispute_id: UUID,
+    update: DisputeUpdate,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    db_dispute = db.query(DisputeCase).filter(DisputeCase.dispute_id == dispute_id).first()
+    if not db_dispute:
+        raise HTTPException(status_code=404, detail="Dispute not found")
+
+    allowed_statuses = {"open", "triage", "investigating", "resolved", "rejected"}
+    if update.status and update.status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail="Invalid dispute status")
+
+    if update.status:
+        db_dispute.status = update.status
+    if update.resolution_notes:
+        db_dispute.resolution_notes = update.resolution_notes
+    if update.evidence:
+        existing = db_dispute.evidence or []
+        db_dispute.evidence = existing + update.evidence
+
+    db.commit()
+    db.refresh(db_dispute)
+
+    _log_action(
+        db,
+        dispute_id=dispute_id,
+        actor=role,
+        action_type="DISPUTE_UPDATED",
+        details={
+            "status": update.status,
+            "resolution_notes": update.resolution_notes,
+            "evidence_added": update.evidence
+        }
+    )
+
+    _append_audit_log(
+        db,
+        election_id=db_dispute.election_id,
+        operation_type="dispute_updated",
+        performed_by=role,
+        details={"dispute_id": str(dispute_id), "status": update.status},
+        status="success"
+    )
+
+    logging_service.log_event("dispute_updated", "INFO", {
+        "dispute_id": str(dispute_id),
+        "status": update.status
+    })
+
+    return db_dispute
+
+@router.get("/disputes/{dispute_id}/actions", response_model=List[IncidentActionResponse])
+async def get_dispute_actions(
+    dispute_id: UUID,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    actions = db.query(IncidentAction).filter(
+        IncidentAction.dispute_id == dispute_id
+    ).order_by(IncidentAction.created_at.asc()).all()
+    return actions
+    
+@router.get("/disputes/{dispute_id}/report")
+async def export_dispute_report(
+    dispute_id: UUID,
+    db: Session = Depends(get_db),
+    role: str = Depends(RoleChecker(["admin", "auditor"]))
+):
+    dispute = db.query(DisputeCase).filter(DisputeCase.dispute_id == dispute_id).first()
+    if not dispute:
+        raise HTTPException(status_code=404, detail="Dispute not found")
+
+    actions = db.query(IncidentAction).filter(
+        IncidentAction.dispute_id == dispute_id
+    ).order_by(IncidentAction.created_at.asc()).all()
+
+    report = {
+        "dispute": {
+            "dispute_id": str(dispute.dispute_id),
+            "election_id": str(dispute.election_id) if dispute.election_id else None,
+            "title": dispute.title,
+            "description": dispute.description,
+            "status": dispute.status,
+            "filed_by": dispute.filed_by,
+            "evidence": dispute.evidence,
+            "created_at": dispute.created_at.isoformat(),
+            "updated_at": dispute.updated_at.isoformat()
+        },
+        "actions": [
+            {
+                "action_id": str(action.action_id),
+                "action_type": action.action_type,
+                "actor": action.actor,
+                "details": action.details,
+                "created_at": action.created_at.isoformat()
+            }
+            for action in actions
+        ],
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
+    signed = _write_signed_report(report, "dispute_reports", f"dispute_{dispute.dispute_id}")
+    report.update({
+        "signature": signed["signature"],
+        "public_key": signed["public_key"],
+        "report_hash": signed["report_hash"],
+        "artifact": signed["artifact"]
+    })
+    return report
 
 
 # US-72: Compliance Reporting
@@ -198,17 +609,31 @@ async def compliance_report(
     audit_count = db.query(AuditLog).filter(AuditLog.election_id == election_id).count()
     chain_status = ledger_service.verify_chain(db, election_id)
 
+    dispute_count = db.query(DisputeCase).filter(DisputeCase.election_id == election_id).count()
+    incident_count = db.query(Incident).count()
+
     report = {
         "election_id": str(election_id),
         "controls": {
-            "audit_logging": {"evidence": f"audit_logs:{audit_count}"},
-            "ledger_integrity": {"evidence": chain_status},
-            "result_verification": {"evidence": result.verification_hash if result else None}
+            "audit_logging": {"evidence": f"audit_logs:{audit_count}", "status": "present"},
+            "ledger_integrity": {"evidence": chain_status, "status": "verified"},
+            "result_verification": {"evidence": result.verification_hash if result else None, "status": "present"},
+            "incident_tracking": {"evidence": f"incidents:{incident_count}", "status": "present"},
+            "dispute_workflow": {"evidence": f"disputes:{dispute_count}", "status": "present"}
         },
+        "missing_controls": [
+            key for key, value in {
+                "result_verification": result is not None
+            }.items() if not value
+        ],
         "generated_at": datetime.utcnow().isoformat()
     }
 
-    signature = signer.sign_data(report)
-    report["signature"] = signature
-    report["public_key"] = signer.get_public_key_pem()
+    signed = _write_signed_report(report, "compliance_reports", f"compliance_{election_id}")
+    report.update({
+        "signature": signed["signature"],
+        "public_key": signed["public_key"],
+        "report_hash": signed["report_hash"],
+        "artifact": signed["artifact"]
+    })
     return report

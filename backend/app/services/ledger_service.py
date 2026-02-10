@@ -45,6 +45,25 @@ class LedgerService:
     def _hash(self, data: str) -> str:
         """Compute SHA-256 hash"""
         return hashlib.sha256(data.encode()).hexdigest()
+
+    def _record_event(
+        self,
+        db: Session,
+        *,
+        election_id: Optional[uuid.UUID],
+        event_type: str,
+        payload: Dict[str, Optional[str]],
+        anchored_block_height: Optional[int] = None
+    ) -> None:
+        payload_json = json.dumps(payload, sort_keys=True)
+        event = LedgerEvent(
+            election_id=election_id,
+            event_type=event_type,
+            payload_hash=self._hash(payload_json),
+            anchored_block_height=anchored_block_height
+        )
+        db.add(event)
+        db.commit()
     
     def _sign(self, data: str) -> str:
         """Sign data with node's private key (simulated)"""
@@ -162,6 +181,12 @@ class LedgerService:
         db.add(entry)
         db.commit()
         db.refresh(entry)
+        self._record_event(
+            db,
+            election_id=election_id,
+            event_type="entry_submitted",
+            payload={"entry_hash": entry.entry_hash, "vote_id": str(vote_id) if vote_id else None}
+        )
         return entry
 
     def propose_block(self, db: Session, election_id: Optional[uuid.UUID], max_entries: int = 1000) -> LedgerBlock:
@@ -225,6 +250,14 @@ class LedgerService:
             
         db.commit()
         db.refresh(new_block)
+
+        self._record_event(
+            db,
+            election_id=election_id,
+            event_type="block_proposed",
+            payload={"height": str(new_block.height), "block_hash": new_block.block_hash},
+            anchored_block_height=new_block.height
+        )
         
         return new_block
 
@@ -261,6 +294,13 @@ class LedgerService:
         db.add(approval)
         db.commit()
         db.refresh(approval)
+        self._record_event(
+            db,
+            election_id=election_id,
+            event_type="block_approved",
+            payload={"height": str(height), "block_hash": block.block_hash, "node_id": self.node_id},
+            anchored_block_height=height
+        )
         return approval
 
     def finalize_block(self, db: Session, election_id: Optional[uuid.UUID], height: int) -> LedgerBlock:
@@ -316,6 +356,13 @@ class LedgerService:
         # Entries are already pinned in propose_block
         
         db.commit()
+        self._record_event(
+            db,
+            election_id=election_id,
+            event_type="block_finalized",
+            payload={"height": str(block.height), "block_hash": block.block_hash, "cert": block.commit_cert_hash},
+            anchored_block_height=block.height
+        )
         return block
 
     def snapshot_create(self, db: Session, election_id: Optional[uuid.UUID], height: int) -> LedgerSnapshot:
@@ -347,6 +394,13 @@ class LedgerService:
         db.add(snapshot)
         db.commit()
         db.refresh(snapshot)
+        self._record_event(
+            db,
+            election_id=election_id,
+            event_type="snapshot_created",
+            payload={"height": str(height), "snapshot_hash": snapshot_hash},
+            anchored_block_height=height
+        )
         return snapshot
 
     def prune(self, db: Session, election_id: Optional[uuid.UUID], height_threshold: int) -> LedgerPruning:
@@ -371,6 +425,13 @@ class LedgerService:
         )
         db.add(pruning_record)
         db.commit()
+        self._record_event(
+            db,
+            election_id=election_id,
+            event_type="ledger_pruned",
+            payload={"height_threshold": str(height_threshold), "event_hash": event_hash},
+            anchored_block_height=height_threshold
+        )
         return pruning_record
 
     def verify_chain(self, db: Session, election_id: Optional[uuid.UUID]) -> Dict:

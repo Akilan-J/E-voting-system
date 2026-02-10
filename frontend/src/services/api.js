@@ -79,6 +79,14 @@ export const opsAPI = {
   getIncidents: () => api.get('/ops/incidents'),
   createIncident: (data) => api.post('/ops/incidents', data),
   updateIncident: (id, data) => api.put(`/ops/incidents/${id}`, data),
+  getIncidentActions: (id) => api.get(`/ops/incidents/${id}/actions`),
+  addIncidentAction: (id, data) => api.post(`/ops/incidents/${id}/actions`, data),
+  downloadIncidentReport: (id) => api.get(`/ops/incidents/${id}/report`),
+  getDisputes: () => api.get('/ops/disputes'),
+  createDispute: (data) => api.post('/ops/disputes', data),
+  updateDispute: (id, data) => api.put(`/ops/disputes/${id}`, data),
+  getDisputeActions: (id) => api.get(`/ops/disputes/${id}/actions`),
+  downloadDisputeReport: (id) => api.get(`/ops/disputes/${id}/report`),
 };
 
 // Verification API (US-62, US-63)
@@ -94,6 +102,8 @@ export const securityAPI = {
   simulateThreat: (data) => api.post('/security/simulate', data),
   replayLedger: (electionId) => api.post('/security/replay-ledger', { election_id: electionId }),
   getAnomalies: () => api.get('/security/anomalies'),
+  getAnomalyReport: () => api.get('/security/anomaly-report'),
+  getReplayTimeline: (params) => api.get('/security/replay-timeline', { params }),
 };
 
 // Auth API (non /api prefix)

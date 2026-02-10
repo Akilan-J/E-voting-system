@@ -13,6 +13,7 @@ const SecurityLab = () => {
     const [electionId, setElectionId] = useState(null);
     const [replayStats, setReplayStats] = useState(null);
     const [selectedAnomaly, setSelectedAnomaly] = useState(null);
+    const [exporting, setExporting] = useState(false);
 
     const handleInvestigate = (anomaly) => {
         setSelectedAnomaly(anomaly);
@@ -84,6 +85,43 @@ const SecurityLab = () => {
         setSimulating(false);
     };
 
+    const handleDownloadAnomalyReport = async () => {
+        setExporting(true);
+        try {
+            const res = await securityAPI.getAnomalyReport();
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'anomaly_report.json');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            addLog("Failed to export anomaly report", "error");
+        }
+        setExporting(false);
+    };
+
+    const handleDownloadTimeline = async () => {
+        if (!electionId) return;
+        setExporting(true);
+        try {
+            const res = await securityAPI.getReplayTimeline({ election_id: electionId });
+            const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `timeline_${electionId}.json`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            addLog("Failed to export replay timeline", "error");
+        }
+        setExporting(false);
+    };
+
     const runLedgerAudit = async () => {
         if (!electionId) return;
         addLog("Starting full ledger replay & hash verification...", "info");
@@ -124,6 +162,22 @@ const SecurityLab = () => {
             <div className="security-header">
                 <h2>🧪 Security & Threat Lab</h2>
                 <div className="status-badge">System Status: <span className="text-green-600 font-bold">ARMED</span></div>
+                <div className="flex gap-2">
+                    <button
+                        className="audit-btn"
+                        onClick={handleDownloadAnomalyReport}
+                        disabled={exporting}
+                    >
+                        📄 Export Anomaly Report
+                    </button>
+                    <button
+                        className="audit-btn"
+                        onClick={handleDownloadTimeline}
+                        disabled={exporting || !electionId}
+                    >
+                        🧾 Export Replay Timeline
+                    </button>
+                </div>
             </div>
 
             <div className="lab-grid">
@@ -140,6 +194,8 @@ const SecurityLab = () => {
                                     onChange={(e) => setScenario(e.target.value)}
                                 >
                                     <option value="replay_attack">Replay Attack</option>
+                                    <option value="oversize_payload">Oversize Payload</option>
+                                    <option value="invalid_proof">Invalid Proof Bundle</option>
                                     <option value="ddos">DDoS / Traffic Burst</option>
                                     <option value="consensus_stall">Consensus Liveness Stall</option>
                                 </select>
@@ -299,6 +355,27 @@ const SecurityLab = () => {
                                 <span className="text-gray-500 text-sm">Detected At</span>
                                 <span className="text-sm">{new Date(selectedAnomaly.timestamp).toLocaleString()}</span>
                             </div>
+
+                            {selectedAnomaly.details && (
+                                <div className="detail-row">
+                                    <span className="text-gray-500 text-sm">Details</span>
+                                    <span className="text-sm">{selectedAnomaly.details}</span>
+                                </div>
+                            )}
+
+                            {selectedAnomaly.correlation_id && (
+                                <div className="detail-row">
+                                    <span className="text-gray-500 text-sm">Correlation ID</span>
+                                    <span className="font-mono text-sm">{selectedAnomaly.correlation_id}</span>
+                                </div>
+                            )}
+
+                            {selectedAnomaly.evidence_hash && (
+                                <div className="detail-row">
+                                    <span className="text-gray-500 text-sm">Evidence Hash</span>
+                                    <span className="font-mono text-sm">{selectedAnomaly.evidence_hash.substring(0, 16)}...</span>
+                                </div>
+                            )}
 
                             <div className="detail-row">
                                 <span className="text-gray-500 text-sm">Source IP</span>
