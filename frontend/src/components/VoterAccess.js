@@ -8,9 +8,14 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
   const [authRole, setAuthRole] = useState(authRoleProp || localStorage.getItem('authRole'));
   const [loginMode, setLoginMode] = useState('voter'); // 'voter' or 'admin'
 
-  const [step, setStep] = useState('login'); // login, mfa, dashboard
+  // Auto-detect existing auth: skip login if already authenticated as voter
+  const existingToken = localStorage.getItem('authToken');
+  const existingRole = localStorage.getItem('authRole');
+  const initialStep = (existingToken && existingRole === 'voter') ? 'dashboard' : 'login';
+
+  const [step, setStep] = useState(initialStep);
   const [identity, setIdentity] = useState('');
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(existingToken || null);
   const [otp, setOtp] = useState('');
   const [mfaData, setMfaData] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -133,12 +138,10 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
       log("Login response received");
 
       if (res.data.mfa_required) {
+        // Store the mfa_pending token temporarily — do NOT set authRole to mfa_pending
         setToken(res.data.access_token);
-        localStorage.setItem('authToken', res.data.access_token);
-        localStorage.setItem('authRole', res.data.role || 'mfa_pending');
-        setAuthRole(res.data.role || 'mfa_pending');
         setStep('mfa_login');
-        log("MFA Required");
+        log("MFA Required — enter your authenticator code");
       } else {
         setToken(res.data.access_token);
         localStorage.setItem('authToken', res.data.access_token);
@@ -177,7 +180,7 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
     }
   };
 
-  // Real MFA Verification
+  // Real MFA Verification — handles both setup activation and login verification
   const verifyMfa = async () => {
     log(`Verifying OTP: ${otp}`);
     try {
@@ -186,11 +189,17 @@ const VoterAccess = ({ authRole: authRoleProp }) => {
         { token: otp },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setToken(res.data.access_token);
-      localStorage.setItem('authToken', res.data.access_token);
-      localStorage.setItem('authRole', res.data.role || 'voter');
+      // Backend now always returns a full token for both setup and login
+      if (res.data.access_token) {
+        setToken(res.data.access_token);
+        localStorage.setItem('authToken', res.data.access_token);
+        localStorage.setItem('authRole', res.data.role || 'voter');
+        setAuthRole(res.data.role || 'voter');
+      }
+      setOtp('');
+      setMfaData(null);
       setStep('dashboard');
-      log("MFA Verified. Logged in.");
+      log(res.data.message ? `MFA Setup Complete: ${res.data.message}` : "MFA Verified. Logged in.");
     } catch (err) {
       log(`MFA Verify Error: ${err.response?.data?.detail || err.message}`);
     }

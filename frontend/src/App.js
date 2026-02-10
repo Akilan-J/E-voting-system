@@ -9,16 +9,28 @@ import VerificationPortal from './components/VerificationPortal';
 import SecurityLab from './components/SecurityLab';
 import LedgerExplorer from './components/LedgerExplorer';
 import VoterAccess from './components/VoterAccess';
+import axios from 'axios';
 import { authAPI } from './services/api';
 
 function App() {
   const roleOrder = ['voter', 'trustee', 'auditor', 'security_engineer', 'admin'];
   const [activeTab, setActiveTab] = useState('results');
   const [systemStatus, setSystemStatus] = useState({ status: 'checking...' });
-  const [authRole, setAuthRole] = useState(localStorage.getItem('authRole'));
   const [credential, setCredential] = useState('');
   const [authError, setAuthError] = useState(null);
   const [selectedRole, setSelectedRole] = useState('voter');
+  const [mfaPending, setMfaPending] = useState(false);
+  const [mfaOtp, setMfaOtp] = useState('');
+  const [mfaToken, setMfaToken] = useState(null);
+
+  // Clean up stale mfa_pending role from previous broken sessions
+  const storedRole = localStorage.getItem('authRole');
+  const initialRole = (storedRole === 'mfa_pending') ? null : storedRole;
+  if (storedRole === 'mfa_pending') {
+    localStorage.removeItem('authRole');
+    localStorage.removeItem('authToken');
+  }
+  const [authRole, setAuthRole] = useState(initialRole);
 
   useEffect(() => {
     // Check backend health on mount using proxy
@@ -64,12 +76,39 @@ function App() {
     setAuthError(null);
     try {
       const res = await authAPI.login(credential);
+      if (res.data.mfa_required) {
+        // MFA is enabled — store temp token and show OTP screen
+        setMfaToken(res.data.access_token);
+        setMfaPending(true);
+        setAuthError(null);
+      } else {
+        localStorage.setItem('authToken', res.data.access_token);
+        localStorage.setItem('authRole', res.data.role);
+        setAuthRole(res.data.role);
+        setCredential('');
+      }
+    } catch (err) {
+      setAuthError(err.response?.data?.detail || 'Login failed');
+    }
+  };
+
+  const handleMfaVerify = async () => {
+    setAuthError(null);
+    try {
+      const res = await axios.post(
+        '/auth/mfa/verify',
+        { token: mfaOtp },
+        { headers: { Authorization: `Bearer ${mfaToken}` } }
+      );
       localStorage.setItem('authToken', res.data.access_token);
       localStorage.setItem('authRole', res.data.role);
       setAuthRole(res.data.role);
+      setMfaPending(false);
+      setMfaOtp('');
+      setMfaToken(null);
       setCredential('');
     } catch (err) {
-      setAuthError(err.response?.data?.detail || 'Login failed');
+      setAuthError(err.response?.data?.detail || 'Invalid OTP');
     }
   };
 
@@ -78,6 +117,9 @@ function App() {
     localStorage.removeItem('authRole');
     setAuthRole(null);
     setActiveTab('results');
+    setMfaPending(false);
+    setMfaOtp('');
+    setMfaToken(null);
   };
 
   const handleRoleChange = (e) => {
@@ -87,6 +129,45 @@ function App() {
   };
 
   if (!authRole) {
+    // MFA verification screen
+    if (mfaPending) {
+      return (
+        <div className="App">
+          <div className="login-screen">
+            <div className="login-card glass-panel">
+              <div className="login-banner">
+                <h1>🔐 Two-Factor Authentication</h1>
+                <p>Enter the code from your authenticator app</p>
+              </div>
+
+              <div className="login-form">
+                <label className="login-label">Authentication Code</label>
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit OTP"
+                  value={mfaOtp}
+                  onChange={(e) => setMfaOtp(e.target.value)}
+                  style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '1.2rem' }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleMfaVerify()}
+                />
+
+                <div className="login-actions">
+                  <button className="btn-auth" onClick={handleMfaVerify}>
+                    Verify
+                  </button>
+                  <button className="btn-auth" style={{ background: '#6b7280', marginLeft: '0.5rem' }} onClick={() => { setMfaPending(false); setMfaToken(null); setMfaOtp(''); }}>
+                    Cancel
+                  </button>
+                </div>
+
+                {authError && <div className="auth-error">{authError}</div>}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="App">
         <div className="login-screen">
@@ -118,6 +199,7 @@ function App() {
                 placeholder={`Example: ${roleCredentialPlaceholder[selectedRole] || 'user123'}`}
                 value={credential}
                 onChange={(e) => setCredential(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
               />
 
               <div className="login-actions">

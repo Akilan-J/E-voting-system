@@ -265,21 +265,30 @@ def verify_mfa_setup(
 
     # If verification successful:
     
-    # 1. If completing setup:
+    # 1. If completing setup (first-time enable):
     if not current_user.mfa_enabled:
         current_user.mfa_enabled = True
         db.commit()
-        return {"message": "MFA Enabled"}
+        # Issue a full token so the frontend stays authenticated after setup
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": str(current_user.user_id), "role": current_user.role},
+            expires_delta=access_token_expires
+        )
+        log = SecurityLog(
+            user_id=current_user.user_id,
+            event_type="MFA_SETUP_COMPLETE",
+            details="MFA Enabled and verified"
+        )
+        db.add(log)
+        db.commit()
+        return {"access_token": access_token, "token_type": "bearer", "role": current_user.role, "message": "MFA Enabled"}
     
-    # 2. If performing login (context check needed? we use role)
-    # If the user called us with "mfa_pending" token, we issue a full token now.
-    # In this simple implementation, the user is already "current_user". 
-    # If they authenticated with "mfa_pending", they are here.
-    
-    # Issue full token
+    # 2. MFA login verification — user authenticated with mfa_pending token
+    # Issue full token with real role
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(current_user.user_id), "role": current_user.role}, # Restore real role
+        data={"sub": str(current_user.user_id), "role": current_user.role},
         expires_delta=access_token_expires
     )
     
