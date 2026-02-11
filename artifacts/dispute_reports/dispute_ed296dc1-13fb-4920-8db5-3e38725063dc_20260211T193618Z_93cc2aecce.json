@@ -1,0 +1,38 @@
+{
+  "dispute": {
+    "dispute_id": "ed296dc1-13fb-4920-8db5-3e38725063dc",
+    "election_id": "daa1d4ed-4077-440d-b6eb-10b94372339a",
+    "title": "Test Dispute",
+    "description": "Automated test dispute",
+    "status": "investigating",
+    "filed_by": "pytest",
+    "evidence": [
+      "receipt:abc123"
+    ],
+    "created_at": "2026-02-11T19:36:18.962522",
+    "updated_at": "2026-02-11T19:36:18.972282"
+  },
+  "actions": [
+    {
+      "action_id": "4ebbe86a-60d2-4121-80ef-6edfba7fc877",
+      "action_type": "DISPUTE_CREATED",
+      "actor": "pytest",
+      "details": {
+        "title": "Test Dispute"
+      },
+      "created_at": "2026-02-11T19:36:18.965501"
+    },
+    {
+      "action_id": "438ff9d3-2246-413f-ba49-b4ba3e05c72f",
+      "action_type": "DISPUTE_UPDATED",
+      "actor": "admin",
+      "details": {
+        "status": "investigating",
+        "resolution_notes": "Assigned",
+        "evidence_added": null
+      },
+      "created_at": "2026-02-11T19:36:18.973564"
+    }
+  ],
+  "generated_at": "2026-02-11T19:36:18.979126"
+}

@@ -1,0 +1,43 @@
+{
+  "incident": {
+    "incident_id": "87560b3d-1d5b-453d-8c22-c44fd6174735",
+    "title": "Test Incident",
+    "description": "Automated test incident",
+    "severity": "low",
+    "status": "triage",
+    "reported_by": "pytest",
+    "created_at": "2026-02-11T19:35:19.516184",
+    "updated_at": "2026-02-11T19:35:19.534183"
+  },
+  "actions": [
+    {
+      "action_id": "b7f71974-c6e8-4447-a821-4bf6d33174cc",
+      "action_type": "INCIDENT_CREATED",
+      "actor": "pytest",
+      "details": {
+        "severity": "low"
+      },
+      "created_at": "2026-02-11T19:35:19.521056"
+    },
+    {
+      "action_id": "c95b8bdb-1358-4bbf-8652-ea08677dc091",
+      "action_type": "INCIDENT_STATUS_CHANGED",
+      "actor": "admin",
+      "details": {
+        "status": "triage",
+        "resolution_notes": "Initial review"
+      },
+      "created_at": "2026-02-11T19:35:19.536638"
+    },
+    {
+      "action_id": "f4901cfc-c084-4add-8290-ea03dff9ad9d",
+      "action_type": "NOTE_ADDED",
+      "actor": "admin",
+      "details": {
+        "note": "Checked logs"
+      },
+      "created_at": "2026-02-11T19:35:19.543938"
+    }
+  ],
+  "generated_at": "2026-02-11T19:35:19.552239"
+}

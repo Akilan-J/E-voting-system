@@ -188,7 +188,7 @@ async def replay_ledger(
     # Update prev_hash to be the actual tip
     from app.models.ledger_models import LedgerBlock
     tip_block = db.query(LedgerBlock).order_by(LedgerBlock.height.desc()).first()
-    prev_hash = tip_block.cur_hash if tip_block else "GENESIS"
+    prev_hash = tip_block.block_hash if tip_block else "GENESIS"
 
     duration = (datetime.now() - start_time).total_seconds() * 1000
 

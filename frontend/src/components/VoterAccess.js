@@ -1,10 +1,4 @@
 /* global BigInt */
-import React, { useState } from 'react';
-import axios from 'axios';
-import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
-import './VoterAccess.css';
-
-/* global BigInt */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';

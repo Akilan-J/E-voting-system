@@ -1,0 +1,15 @@
+{
+  "generated_at": "2026-02-11T19:40:49.694744",
+  "window_minutes": 60,
+  "anomalies": [
+    {
+      "id": "ANOM-000",
+      "type": "No Active Anomalies",
+      "timestamp": "2026-02-11T19:40:49.689393",
+      "severity": "low",
+      "details": "System operating within expected thresholds",
+      "correlation_id": "CORR-092243b5-aa72-4517-9b73-37006d6d166b",
+      "evidence_hash": "35eb2f118764aec4ca050a7f58a4a90c139a21d8275e20ef92581c0ed171f82b"
+    }
+  ]
+}
