@@ -91,7 +91,7 @@ function ResultsDashboard() {
           <h3>No Results Available</h3>
           <p>{error}</p>
           <button className="btn btn-primary" onClick={loadResults}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Retry
+            Retry
           </button>
         </div>
       </div>
@@ -111,7 +111,7 @@ function ResultsDashboard() {
             {summary?.election?.status || 'Pending'}
           </span>
           <button className="btn btn-icon" onClick={loadResults} title="Refresh">
-            <RefreshCw className="w-5 h-5" />
+
           </button>
         </div>
       </div>
@@ -119,21 +119,21 @@ function ResultsDashboard() {
       {/* Stats Cards */}
       <div className="stats-row">
         <div className="stat-card">
-          <div className="stat-icon"><Box className="w-6 h-6" /></div>
+          <div className="stat-icon"></div>
           <div className="stat-content">
             <span className="stat-value">{summary?.results?.total_votes || 0}</span>
             <span className="stat-label">Total Votes</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon"><Users className="w-6 h-6" /></div>
+          <div className="stat-icon"></div>
           <div className="stat-content">
             <span className="stat-value">{Object.keys(summary?.results?.tally || {}).length}</span>
             <span className="stat-label">Candidates</span>
           </div>
         </div>
         <div className="stat-card highlight">
-          <div className="stat-icon"><Trophy className="w-6 h-6" /></div>
+          <div className="stat-icon"></div>
           <div className="stat-content">
             <span className="stat-value">{winner ? winner[0] : '-'}</span>
             <span className="stat-label">Winner</span>
@@ -152,7 +152,7 @@ function ResultsDashboard() {
 
             return (
               <div key={candidate} className={`candidate-card ${isWinner ? 'winner' : ''}`}>
-                {isWinner && <div className="winner-badge"><Trophy className="w-3 h-3 mr-1" /> Winner</div>}
+                {isWinner && <div className="winner-badge"> Winner</div>}
                 <div className="candidate-header">
                   <div className="candidate-avatar" style={{ background: color }}>
                     {candidate.charAt(0)}
@@ -220,7 +220,7 @@ function ResultsDashboard() {
         {/* Verification Status */}
         {verificationStatus && !verificationStatus.loading && (
           <div className={`verification-result ${verificationStatus.valid ? 'valid' : 'invalid'}`}>
-            <span className="ver-icon">{verificationStatus.valid ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}</span>
+            <span className="ver-icon"></span>
             <span className="ver-message">{verificationStatus.message}</span>
           </div>
         )}
@@ -231,7 +231,7 @@ function ResultsDashboard() {
             onClick={verifyResults}
             disabled={verificationStatus?.loading}
           >
-            {verificationStatus?.loading ? <><Loader className="w-4 h-4 mr-2 animate-spin" /> Verifying...</> : <><Search className="w-4 h-4 mr-2" /> Verify Results</>}
+            {verificationStatus?.loading ? <> Verifying...</> : <> Verify Results</>}
           </button>
         </div>
       </div>
@@ -241,7 +241,7 @@ function ResultsDashboard() {
         <div className="section-card blockchain-section">
           <h3>Blockchain Record</h3>
           <div className="blockchain-status published">
-            <div className="blockchain-icon"><CheckCircle className="w-8 h-8" /></div>
+            <div className="blockchain-icon"></div>
             <div className="blockchain-info">
               <h4>Results Published to Blockchain</h4>
               <p>This election's results are immutably recorded on the ledger.</p>
@@ -253,7 +253,7 @@ function ResultsDashboard() {
         <div className="section-card blockchain-section">
           <h3>Blockchain Record</h3>
           <div className="blockchain-status pending">
-            <div className="blockchain-icon"><Loader className="w-8 h-8 animate-spin" /></div>
+            <div className="blockchain-icon"></div>
             <div className="blockchain-info">
               <h4>Not Yet Published</h4>
               <p>Results can be published to the blockchain after tallying is complete.</p>

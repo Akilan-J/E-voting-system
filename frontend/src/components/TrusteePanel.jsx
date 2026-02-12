@@ -92,7 +92,7 @@ function TrusteePanel() {
       {/* Message Display */}
       {message && (
         <div className={`alert alert-${message.type}`}>
-          <span className="alert-icon">{message.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}</span>
+          <span className="alert-icon"></span>
           <span className="alert-text">{message.text}</span>
           <button className="alert-close" onClick={() => setMessage(null)}>×</button>
         </div>
@@ -136,7 +136,7 @@ function TrusteePanel() {
 
         {trustees.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon"><User className="w-12 h-12 text-gray-400" /></div>
+            <div className="empty-icon"></div>
             <p>No trustees registered yet</p>
             <span>Go to Testing tab and click "Setup Trustees"</span>
           </div>
@@ -168,8 +168,8 @@ function TrusteePanel() {
                   <div className="trustee-actions">
                     {isDecrypted ? (
                       <div className="decrypted-badge">
-                        <span className="badge-icon"><ShieldCheck className="w-4 h-4 text-green-600" /></span>
-                        <span className="badge-text"><Unlock className="w-4 h-4 mr-2" /> Decrypted</span>
+                        <span className="badge-icon"></span>
+                        <span className="badge-text">Decrypted</span>
                       </div>
                     ) : canDecrypt ? (
                       <button
@@ -183,7 +183,7 @@ function TrusteePanel() {
                             Decrypting...
                           </>
                         ) : (
-                          <><Unlock className="w-4 h-4 mr-1" /> Decrypt</>
+                          <>Decrypt</>
                         )}
                       </button>
                     ) : (
@@ -201,7 +201,7 @@ function TrusteePanel() {
 
       {/* Info Card */}
       <div className="info-card">
-        <div className="info-icon"><Lightbulb className="w-6 h-6 text-yellow-500" /></div>
+        <div className="info-icon"></div>
         <div className="info-content">
           <h4>How Threshold Decryption Works</h4>
           <p>
@@ -219,7 +219,7 @@ function TrusteePanel() {
           className="btn-toggle-visualizer"
           onClick={() => setShowVisualizer(!showVisualizer)}
         >
-          {showVisualizer ? <><ChevronUp className="w-4 h-4 mr-2" /> Hide</> : <><ChevronDown className="w-4 h-4 mr-2" /> Show</>} Cryptographic Process Visualization
+          {showVisualizer ? <>Hide</> : <>Show</>} Cryptographic Process Visualization
         </button>
       </div>
 

@@ -164,23 +164,23 @@ function CryptoVisualizer() {
       {/* Current Status */}
       <div className="status-overview">
         <div className="status-card">
-          <span className="status-label"><BarChart2 className="w-4 h-4 mr-1" /> Total Votes</span>
+          <span className="status-label"> Total Votes</span>
           <span className="status-value">{stats?.votes?.total || 0}</span>
         </div>
         <div className="status-card">
-          <span className="status-label"><Lock className="w-4 h-4 mr-1" /> Encrypted</span>
+          <span className="status-label"> Encrypted</span>
           <span className="status-value">{stats?.votes?.total || 0}</span>
         </div>
         <div className="status-card">
-          <span className="status-label"><Plus className="w-4 h-4 mr-1" /> Aggregated</span>
+          <span className="status-label"> Aggregated</span>
           <span className="status-value">{tallyStatus?.aggregated ? 'Yes' : 'No'}</span>
         </div>
         <div className="status-card">
-          <span className="status-label"><Users className="w-4 h-4 mr-1" /> Trustees</span>
+          <span className="status-label"> Trustees</span>
           <span className="status-value">{tallyStatus?.partial_decryptions || 0}/5</span>
         </div>
         <div className="status-card">
-          <span className="status-label"><CheckCircle className="w-4 h-4 mr-1" /> Finalized</span>
+          <span className="status-label"> Finalized</span>
           <span className="status-value">{results ? 'Yes' : 'No'}</span>
         </div>
       </div>
@@ -202,11 +202,11 @@ function CryptoVisualizer() {
               onClick={handleGenerateVotes}
               disabled={isLoading || stats?.votes?.total > 0}
             >
-              {stats?.votes?.total > 0 ? <><CheckCircle className="w-4 h-4 mr-2" /> Votes Generated</> : <><Play className="w-4 h-4 mr-2" /> Generate Votes</>}
+              {stats?.votes?.total > 0 ? <> Votes Generated</> : <> Generate Votes</>}
             </button>
             {stats?.votes?.total > 0 && (
               <div className="step-info">
-                <span><CheckCircle className="w-3 h-3 inline mr-1" /> {stats.votes.total} votes encrypted</span>
+                <span> {stats.votes.total} votes encrypted</span>
                 <span>E(v) = gᵐ · rⁿ mod n²</span>
               </div>
             )}
@@ -224,11 +224,11 @@ function CryptoVisualizer() {
               onClick={handleStartTally}
               disabled={isLoading || !stats?.votes?.total || tallyStatus?.aggregated}
             >
-              {tallyStatus?.aggregated ? <><CheckCircle className="w-4 h-4 mr-2" /> Aggregated</> : <><Play className="w-4 h-4 mr-2" /> Start Aggregation</>}
+              {tallyStatus?.aggregated ? <> Aggregated</> : <> Start Aggregation</>}
             </button>
             {tallyStatus?.aggregated && (
               <div className="step-info">
-                <span><CheckCircle className="w-3 h-3 inline mr-1" /> All votes combined</span>
+                <span> All votes combined</span>
                 <span>E(Σvᵢ) = ∏ E(vᵢ)</span>
               </div>
             )}
@@ -250,16 +250,16 @@ function CryptoVisualizer() {
                   onClick={() => handleTrusteeDecrypt(trustee.id, `Trustee ${idx + 1}`)}
                   disabled={isLoading || !tallyStatus?.aggregated || trustee.has_decrypted || tallyStatus?.finalized}
                 >
-                  <span className="trustee-icon"><User className="w-4 h-4" /></span>
+                  <span className="trustee-icon"></span>
                   <span>Trustee {idx + 1}</span>
-                  {trustee.has_decrypted && <span className="check"><CheckCircle className="w-3 h-3" /></span>}
+                  {trustee.has_decrypted && <span className="check"></span>}
                 </button>
               ))}
             </div>
 
             {tallyStatus?.partial_decryptions >= 3 && !tallyStatus?.finalized && (
               <div className="threshold-alert">
-                <Target className="inline-icon mr-2" /> Threshold reached! Ready to finalize
+                Threshold reached! Ready to finalize
               </div>
             )}
           </div>
@@ -276,11 +276,11 @@ function CryptoVisualizer() {
               onClick={handleFinalize}
               disabled={isLoading || tallyStatus?.partial_decryptions < 3 || tallyStatus?.finalized}
             >
-              {tallyStatus?.finalized ? <><CheckCircle className="w-4 h-4 mr-2" /> Finalized</> : <><Play className="w-4 h-4 mr-2" /> Finalize Tally</>}
+              {tallyStatus?.finalized ? <> Finalized</> : <> Finalize Tally</>}
             </button>
             {tallyStatus?.finalized && (
               <div className="step-info">
-                <span><CheckCircle className="w-3 h-3 inline mr-1" /> Results computed</span>
+                <span> Results computed</span>
                 <span>m = L(∏ Dᵢ^λᵢ) · μ mod n</span>
               </div>
             )}
@@ -310,7 +310,7 @@ function CryptoVisualizer() {
                 })}
               </div>
               <div className="privacy-notice">
-                <Lock className="inline-icon mr-2" /> Individual votes remain cryptographically hidden
+                Individual votes remain cryptographically hidden
               </div>
             </div>
           )}

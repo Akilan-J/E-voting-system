@@ -52,7 +52,7 @@ function LedgerExplorer() {
             {lastUpdated ? `Updated: ${lastUpdated}` : 'Connecting...'}
           </span>
           <button className="btn btn-refresh" onClick={fetchData}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+            Refresh
           </button>
         </div>
       </div>
@@ -60,14 +60,14 @@ function LedgerExplorer() {
       {/* Chain Status */}
       <div className="status-row">
         <div className="status-card">
-          <div className="status-icon"><Box className="w-6 h-6" /></div>
+          <div className="status-icon"></div>
           <div className="status-info">
             <span className="status-value">{blocks.length}</span>
             <span className="status-label">Total Blocks</span>
           </div>
         </div>
         <div className="status-card">
-          <div className="status-icon"><FileText className="w-6 h-6" /></div>
+          <div className="status-icon"></div>
           <div className="status-info">
             <span className="status-value">
               {blocks.reduce((sum, b) => sum + (b.entry_count || 0), 0)}
@@ -76,7 +76,7 @@ function LedgerExplorer() {
           </div>
         </div>
         <div className={`status-card ${chainStatus?.valid ? 'valid' : 'warning'}`}>
-          <div className="status-icon">{chainStatus?.valid ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}</div>
+          <div className="status-icon"></div>
           <div className="status-info">
             <span className="status-value">
               {chainStatus?.valid ? 'Valid' : chainStatus?.reason || 'Pending'}
@@ -99,7 +99,7 @@ function LedgerExplorer() {
 
         {error && (
           <div className="error-state">
-            <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
+
             <p>{error}</p>
             <span>Is the backend running?</span>
           </div>
@@ -107,7 +107,7 @@ function LedgerExplorer() {
 
         {!loading && blocks.length === 0 && !error && (
           <div className="empty-state">
-            <div className="empty-icon"><Link className="w-12 h-12 text-gray-400" /></div>
+            <div className="empty-icon"></div>
             <h4>No Blocks Yet</h4>
             <p>The blockchain will populate once election results are published.</p>
           </div>
@@ -158,7 +158,7 @@ function LedgerExplorer() {
 
                   <div className="block-footer">
                     <div className="entry-badge">
-                      <FileText className="w-4 h-4 mr-1" /> {block.entry_count || 0} entries
+                      {block.entry_count || 0} entries
                     </div>
                   </div>
                 </div>
@@ -170,7 +170,7 @@ function LedgerExplorer() {
 
       {/* Info Card */}
       <div className="info-card">
-        <div className="info-icon"><Lightbulb className="w-6 h-6 text-yellow-500" /></div>
+        <div className="info-icon"></div>
         <div className="info-content">
           <h4>About the Immutable Ledger</h4>
           <p>

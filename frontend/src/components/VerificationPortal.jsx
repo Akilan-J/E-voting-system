@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lock, Receipt, Zap, RotateCw, CheckCircle, XCircle } from 'lucide-react';
 import { verificationAPI, resultsAPI, mockDataAPI } from '../services/api';
 import './VerificationPortal.css';
 
@@ -155,7 +154,7 @@ const VerificationPortal = () => {
                                     className="generate-proof-btn"
                                     disabled={loading || !electionId}
                                 >
-                                    <span><RotateCw className="w-4 h-4" /></span> Generate Mock Proof
+                                    <span></span> Generate Mock Proof
                                 </button>
                             </div>
                             <textarea
@@ -187,7 +186,7 @@ const VerificationPortal = () => {
             {verificationResult && (
                 <div className={`verification-result ${verificationResult.success ? 'result-valid' : 'result-invalid'}`}>
                     <div className="result-header">
-                        <span className="result-icon">{verificationResult.success ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}</span>
+                        <span className="result-icon"></span>
                         <span className={`result-text ${verificationResult.success ? 'valid-text' : 'invalid-text'}`}>
                             {verificationResult.success ? 'Verification Successful' : 'Verification Failed'}
                         </span>

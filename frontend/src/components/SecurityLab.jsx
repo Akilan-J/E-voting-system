@@ -74,7 +74,7 @@ const SecurityLab = () => {
             });
 
             if (res.data.detected_by_ids) {
-                addLog(<><CheckCircle className="inline-icon w-3 h-3" /> Threat neutralized by IDS</>, "success");
+                addLog(<>Threat neutralized by IDS</>, "success");
             }
 
             // Refresh anomalies if new ones generated
@@ -169,14 +169,14 @@ const SecurityLab = () => {
                         onClick={handleDownloadAnomalyReport}
                         disabled={exporting}
                     >
-                        <FileText className="w-4 h-4 mr-2" /> Export Anomaly Report
+                        Export Anomaly Report
                     </button>
                     <button
                         className="audit-btn"
                         onClick={handleDownloadTimeline}
                         disabled={exporting || !electionId}
                     >
-                        <Receipt className="w-4 h-4 mr-2" /> Export Replay Timeline
+                        Export Replay Timeline
                     </button>
                 </div>
             </div>
@@ -233,7 +233,7 @@ const SecurityLab = () => {
                                         </>
                                     ) : (
                                         <>
-                                            <Zap className="w-4 h-4 mr-2" /> Run Full Replay Audit
+                                            Run Full Replay Audit
                                         </>
                                     )}
                                 </button>
@@ -258,7 +258,7 @@ const SecurityLab = () => {
                         <div className="audit-result-container">
                             {/* Result State */}
                             <div className={`verified-badge ${replayStats.status === 'Integrity Verified' ? '' : 'error'}`}>
-                                {replayStats.status === 'Integrity Verified' ? <><CheckCircle className="inline-icon mr-2" /> Integrity Verified</> : <><XCircle className="inline-icon mr-2" /> Corruption Detected</>}
+                                {replayStats.status === 'Integrity Verified' ? <>Integrity Verified</> : <>Corruption Detected</>}
                             </div>
 
                             {replayStats.data && (
@@ -302,7 +302,7 @@ const SecurityLab = () => {
                             anomalies.map((anom, i) => (
                                 <div className="anomaly-item" key={i}>
                                     <div>
-                                        <div className="anomaly-title"><AlertTriangle className="inline-icon mr-1 w-3 h-3 text-yellow-500" /> {anom.type}</div>
+                                        <div className="anomaly-title"> {anom.type}</div>
                                         <div className="anomaly-meta">{new Date(anom.timestamp).toLocaleTimeString()} • {anom.severity.toUpperCase()}</div>
                                     </div>
                                     {canOperate && (
@@ -341,7 +341,7 @@ const SecurityLab = () => {
                     <div className="modal-content">
                         <div className="modal-header">
                             <h3>Anomaly Investigation</h3>
-                            <button onClick={closeInvestigation} className="close-btn"><X className="w-5 h-5" /></button>
+                            <button onClick={closeInvestigation} className="close-btn">Close</button>
                         </div>
 
                         <div className="modal-body">

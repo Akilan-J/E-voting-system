@@ -227,19 +227,19 @@ const TallyAudit = () => {
                         <div className="controls">
                             {!tallyStatus && isAdmin && (
                                 <button className="control-btn btn-start" onClick={handleStartTally} disabled={loading}>
-                                    <Rocket className="w-4 h-4 mr-2" /> Initialize Tally Protocol
+                                    Initialize Tally Protocol
                                 </button>
                             )}
 
                             {tallyStatus?.status === 'decryption_in_progress' && tallyStatus.completed_trustees >= tallyStatus.required_trustees && isAdmin && (
                                 <button className="control-btn btn-start" onClick={handleFinalizeTally} disabled={loading}>
-                                    <Flag className="w-4 h-4 mr-2" /> Finalize & Publish Results
+                                    Finalize & Publish Results
                                 </button>
                             )}
 
                             {tallyStatus?.status === 'completed' && (
                                 <div className="success-message" style={{ marginTop: '1rem', color: 'green', fontWeight: 'bold', textAlign: 'center' }}>
-                                    <CheckCircle className="inline-icon mr-2" /> Tally Finalized
+                                    Tally Finalized
                                 </div>
                             )}
                         </div>
@@ -249,7 +249,7 @@ const TallyAudit = () => {
                         <h3>Circuit Breaker (US-53)</h3>
                         {circuitBreaker ? (
                             <div className="cb-status">
-                                <span className="cb-icon">{circuitBreaker.state === 'closed' ? <CheckCircle className="text-green-500" /> : <Shield className="text-red-500" />}</span>
+                                <span className="cb-icon"></span>
                                 <div className={`cb-state state-${circuitBreaker.state}`}>
                                     {circuitBreaker.state}
                                 </div>

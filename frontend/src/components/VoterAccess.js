@@ -346,7 +346,7 @@ const VoterAccess = ({ authRole }) => {
       <div className="voter-access project-box">
         <h2>Vote Submitted</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
-          <CheckCircle size={64} color="#10b981" style={{ marginBottom: '1rem' }} />
+
           <h3>Thank you for voting!</h3>
           <p>Your vote has been anonymously cast and recorded on the immutable ledger.</p>
 
@@ -372,7 +372,7 @@ const VoterAccess = ({ authRole }) => {
       <div className="voter-access project-box">
         <h2>Voter Access</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
-          <Lock size={48} color="#6b7280" style={{ marginBottom: '1rem' }} />
+
           <h3>Authentication Required</h3>
           <p>Please log in via the main menu to access voting tools.</p>
         </div>
@@ -385,7 +385,7 @@ const VoterAccess = ({ authRole }) => {
       <div className="voter-access project-box">
         <h2>Voter Access</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
-          <AlertCircle size={48} color="#b45309" style={{ marginBottom: '1rem' }} />
+
           <h3>Restricted Access</h3>
           <p>Voting tools are available to the voter role only. You are currently logged in as <strong>{authRole}</strong>.</p>
         </div>
@@ -401,7 +401,7 @@ const VoterAccess = ({ authRole }) => {
       <div className="dashboard-controls">
         <div className="status-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Fingerprint size={16} />
+
             <span>Logged in as: <strong>Voter</strong></span>
           </div>
         </div>
@@ -436,7 +436,7 @@ const VoterAccess = ({ authRole }) => {
               <button className="refresh-btn" onClick={checkEligibility}>Check Eligibility</button>
               {eligibility && (
                 <span className={`status-badge ${eligibility.is_eligible ? 'success' : 'error'}`} style={{ padding: '4px 8px', borderRadius: '4px', background: eligibility.is_eligible ? '#d1fae5' : '#fee2e2', color: eligibility.is_eligible ? '#065f46' : '#991b1b' }}>
-                  {eligibility.is_eligible ? <CheckCircle size={16} style={{ verticalAlign: 'middle' }} /> : <AlertCircle size={16} style={{ verticalAlign: 'middle' }} />}
+
                   {' '}{eligibility.is_eligible ? "Eligible" : "Ineligible"}
                 </span>
               )}
@@ -468,7 +468,7 @@ const VoterAccess = ({ authRole }) => {
           {electionData ? (
             <>
               <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Vote className="w-6 h-6" /> {uiText[language]?.votingBooth || uiText.en.votingBooth}: {electionData.title}
+                {uiText[language]?.votingBooth || uiText.en.votingBooth}: {electionData.title}
               </h2>
               <p style={{ color: '#666', marginBottom: '1rem' }}>{uiText[language]?.selectCandidate || uiText.en.selectCandidate}</p>
 
@@ -516,7 +516,7 @@ const VoterAccess = ({ authRole }) => {
                   style={{ marginTop: '2rem', background: '#2563eb', fontSize: '1.05rem' }}
                   onClick={() => setShowPreview(true)}
                 >
-                  <Search className="w-4 h-4 mr-2" /> {uiText[language]?.review || uiText.en.review}
+                  {uiText[language]?.review || uiText.en.review}
                 </button>
               )}
 
@@ -534,7 +534,7 @@ const VoterAccess = ({ authRole }) => {
                       {uiText[language]?.back || uiText.en.back}
                     </button>
                     <button className="auth-btn" style={{ background: '#ec4899' }} onClick={castVote}>
-                      <Lock className="w-4 h-4 mr-2" /> {uiText[language]?.confirmVote || uiText.en.confirmVote}
+                      {uiText[language]?.confirmVote || uiText.en.confirmVote}
                     </button>
                   </div>
                 </div>
@@ -554,7 +554,7 @@ const VoterAccess = ({ authRole }) => {
           ) : (
             <>
               <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Vote className="w-6 h-6" /> Voting Booth
+                Voting Booth
               </h2>
               <p style={{ color: '#666', marginBottom: '1rem' }}>Election details could not be loaded yet.</p>
               {electionError && <p style={{ color: '#b45309', marginBottom: '1rem' }}>{electionError}</p>}
