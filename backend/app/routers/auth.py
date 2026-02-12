@@ -161,6 +161,9 @@ def login(
 
     # US-2: MFA Check
     if user.mfa_enabled:
+        from app.models.biometric_models import BiometricCredential
+        has_biometric = db.query(BiometricCredential).filter(BiometricCredential.user_id == user.user_id).first() is not None
+        
         # Return a special token or signal that MFA is required
         # For simplicity, we return a token with role "mfa_pending" which can ONLY access /mfa/validate
         access_token_expires = timedelta(minutes=5)
@@ -168,7 +171,14 @@ def login(
             data={"sub": str(user.user_id), "role": "mfa_pending"},
             expires_delta=access_token_expires
         )
-        return {"access_token": access_token, "token_type": "bearer", "role": "mfa_pending", "mfa_required": True}
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer", 
+            "role": "mfa_pending", 
+            "mfa_required": True,
+            "mfa_type": "biometric" if has_biometric else "totp",
+            "user_id": str(user.user_id)
+        }
 
     # Generate full token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)

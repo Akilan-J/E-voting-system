@@ -12,7 +12,8 @@ import LedgerExplorer from './components/LedgerExplorer';
 import VoterAccess from './components/VoterAccess';
 import axios from 'axios';
 import { authAPI } from './services/api';
-import { Lock, Vote, BarChart2, User, Scale, Key, Link, FlaskConical, Shield, CheckCircle, TestTube2 } from 'lucide-react';
+import { Lock, Vote, BarChart2, User, Scale, Key, Link, FlaskConical, Shield, CheckCircle, TestTube2, Fingerprint } from 'lucide-react';
+import { authenticateBiometric } from './services/webauthn';
 
 function App() {
   const roleOrder = ['voter', 'trustee', 'auditor', 'security_engineer', 'admin'];
@@ -24,6 +25,8 @@ function App() {
   const [mfaPending, setMfaPending] = useState(false);
   const [mfaOtp, setMfaOtp] = useState('');
   const [mfaToken, setMfaToken] = useState(null);
+  const [mfaType, setMfaType] = useState('totp'); // 'totp' or 'biometric'
+  const [mfaUserId, setMfaUserId] = useState(null);
 
   // Clean up stale mfa_pending role from previous broken sessions
   const storedRole = localStorage.getItem('authRole');
@@ -79,10 +82,17 @@ function App() {
     try {
       const res = await authAPI.login(credential);
       if (res.data.mfa_required) {
-        // MFA is enabled — store temp token and show OTP screen
+        // MFA is enabled — store temp token and show OTP/Biometric screen
         setMfaToken(res.data.access_token);
         setMfaPending(true);
+        setMfaType(res.data.mfa_type || 'totp');
+        setMfaUserId(res.data.user_id);
         setAuthError(null);
+
+        // Auto-trigger biometric if available
+        if (res.data.mfa_type === 'biometric') {
+          handleBiometricAuth(res.data.user_id);
+        }
       } else {
         localStorage.setItem('authToken', res.data.access_token);
         localStorage.setItem('authRole', res.data.role);
@@ -114,6 +124,25 @@ function App() {
     }
   };
 
+  const handleBiometricAuth = async (userId) => {
+    const targetUserId = userId || mfaUserId;
+    if (!targetUserId) return;
+
+    setAuthError(null);
+    try {
+      const res = await authenticateBiometric(targetUserId);
+      localStorage.setItem('authToken', res.data.access_token);
+      localStorage.setItem('authRole', res.data.role);
+      setAuthRole(res.data.role);
+      setMfaPending(false);
+      setMfaToken(null);
+      setMfaUserId(null);
+      setCredential('');
+    } catch (err) {
+      setAuthError(err.response?.data?.detail || 'Biometric authentication failed');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('authRole');
@@ -138,26 +167,45 @@ function App() {
           <div className="login-screen">
             <div className="login-card glass-panel">
               <div className="login-banner">
-                <h1>Two-Factor Authentication</h1>
-                <p>Enter the code from your authenticator app</p>
+                <h1>{mfaType === 'biometric' ? 'Biometric Authentication' : 'Two-Factor Authentication'}</h1>
+                <p>
+                  {mfaType === 'biometric'
+                    ? 'Scan your fingerprint or face to continue'
+                    : 'Enter the code from your authenticator app'}
+                </p>
               </div>
 
               <div className="login-form">
-                <label className="login-label">Authentication Code</label>
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit OTP"
-                  value={mfaOtp}
-                  onChange={(e) => setMfaOtp(e.target.value)}
-                  style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '1.2rem' }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleMfaVerify()}
-                />
+                {mfaType === 'totp' ? (
+                  <>
+                    <label className="login-label">Authentication Code</label>
+                    <input
+                      type="text"
+                      placeholder="Enter 6-digit OTP"
+                      value={mfaOtp}
+                      onChange={(e) => setMfaOtp(e.target.value)}
+                      style={{ textAlign: 'center', letterSpacing: '4px', fontSize: '1.2rem' }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleMfaVerify()}
+                    />
+                    <div className="login-actions">
+                      <button className="btn-auth" onClick={handleMfaVerify}>
+                        Verify OTP
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="biometric-prompt" style={{ textAlign: 'center', padding: '1rem' }}>
+                    <div className="fingerprint-icon-large" style={{ margin: '1rem auto' }}>
+                      <Fingerprint size={64} color="#3b82f6" />
+                    </div>
+                    <button className="btn-auth" onClick={() => handleBiometricAuth()}>
+                      Retry Fingerprint Scan
+                    </button>
+                  </div>
+                )}
 
-                <div className="login-actions">
-                  <button className="btn-auth" onClick={handleMfaVerify}>
-                    Verify
-                  </button>
-                  <button className="btn-auth" style={{ background: '#6b7280', marginLeft: '0.5rem' }} onClick={() => { setMfaPending(false); setMfaToken(null); setMfaOtp(''); }}>
+                <div className="login-actions" style={{ marginTop: '1rem' }}>
+                  <button className="btn-auth" style={{ background: '#6b7280', width: '100%' }} onClick={() => { setMfaPending(false); setMfaToken(null); setMfaOtp(''); }}>
                     Cancel
                   </button>
                 </div>

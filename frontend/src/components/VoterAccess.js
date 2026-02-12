@@ -1,7 +1,8 @@
 /* global BigInt */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Vote, Search, Lock, CheckCircle, Shield, User, Fingerprint, AlertCircle } from 'lucide-react';
+import { Vote, Search, Lock, CheckCircle, Shield, User, Fingerprint, AlertCircle, Smartphone } from 'lucide-react';
+import { registerBiometric, isBiometricAvailable } from '../services/webauthn';
 import './VoterAccess.css';
 
 const VoterAccess = ({ authRole }) => {
@@ -16,6 +17,8 @@ const VoterAccess = ({ authRole }) => {
   const [voteReceipt, setVoteReceipt] = useState(null);
   const [blindedToken, setBlindedToken] = useState(null); // Valid token for voting
   const [signature, setSignature] = useState(null); // State for the signature
+  const [biometricSupported, setBiometricSupported] = useState(false);
+  const [biometricEnrolled, setBiometricEnrolled] = useState(false);
   const [language, setLanguage] = useState('en');
   const [showPreview, setShowPreview] = useState(false);
   const [voteError, setVoteError] = useState(null);
@@ -58,6 +61,7 @@ const VoterAccess = ({ authRole }) => {
       }
     };
     fetchElection();
+    isBiometricAvailable().then(setBiometricSupported);
   }, []);
 
   const handleElectionReload = async () => {
@@ -199,6 +203,17 @@ const VoterAccess = ({ authRole }) => {
       log("MFA Setup initiated. Scan QR code (URI provided).");
     } catch (err) {
       log(`MFA Setup Error: ${err.response?.data?.detail || err.message}`);
+    }
+  };
+
+  const setupBiometric = async () => {
+    log("Starting biometric enrollment...");
+    try {
+      await registerBiometric();
+      setBiometricEnrolled(true);
+      log("Biometric enrollment successful! Fingerprint/FaceID is now active.");
+    } catch (err) {
+      log(`Biometric Error: ${err.response?.data?.detail || err.message}`);
     }
   };
 
@@ -411,23 +426,24 @@ const VoterAccess = ({ authRole }) => {
             <div className="card-header">
               <h3>Security Settings</h3>
             </div>
-            {!mfaData ? (
-              <button className="auth-btn" style={{ marginTop: '1rem' }} onClick={setupMfa}>Enable 2FA Protection</button>
-            ) : (
-              <div className="mfa-setup">
-                <p><strong>Config Secret:</strong> <code>{mfaData.secret}</code></p>
-                <p style={{ fontSize: '0.8rem', color: '#666' }}>{mfaData.provisioning_uri}</p>
-                <input
-                  type="text"
-                  className="input-field"
-                  placeholder="Verify Code to Activate"
-                  value={otp}
-                  onChange={e => setOtp(e.target.value)}
-                  style={{ marginTop: '10px' }}
-                />
-                <button className="auth-btn" style={{ marginTop: '10px' }} onClick={verifyMfaSetup}>Activate 2FA</button>
-              </div>
-            )}
+            <div className="security-options" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {biometricSupported && (
+                <button
+                  className="auth-btn"
+                  style={{ background: biometricEnrolled ? '#10b981' : '#6366f1', marginTop: '1rem' }}
+                  onClick={setupBiometric}
+                  disabled={biometricEnrolled}
+                >
+                  <Fingerprint size={18} className="mr-2" />
+                  {biometricEnrolled ? 'Biometric Active' : 'Enable Fingerprint/FaceID'}
+                </button>
+              )}
+              {!biometricSupported && (
+                <p style={{ color: '#666', fontSize: '0.9rem' }}>
+                  Biometric authentication is not supported on this device.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="card">

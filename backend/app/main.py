@@ -28,8 +28,10 @@ from app.routers import (
     security,
     ledger,
     auth,
-    voter
+    voter,
+    biometric
 )
+import app.models.biometric_models
 
 # Configure logging
 logging.basicConfig(
@@ -195,6 +197,7 @@ app.include_router(security.router, prefix="/api/security", tags=["security"])
 app.include_router(ledger.router, prefix="/api/ledger", tags=["Ledger"])
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(voter.router, prefix="/api/voter", tags=["Voter"])
+app.include_router(biometric.router, prefix="/api/biometric", tags=["Biometric"])
 
 
 # Root endpoint
