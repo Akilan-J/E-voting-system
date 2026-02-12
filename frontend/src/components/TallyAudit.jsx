@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { tallyingAPI, resultsAPI, authAPI, mockDataAPI } from '../services/api';
+import { BarChart2, Rocket, Flag, CheckCircle, Zap, Key, Scroll, Search, FileText, Shield, RefreshCw } from 'lucide-react';
 import './TallyAudit.css';
 
 const TallyAudit = () => {
@@ -185,7 +186,7 @@ const TallyAudit = () => {
     return (
         <div className="tally-audit-container">
             <div className="tally-header">
-                <h2>📊 Tally & Audit Hub</h2>
+                <h2>Tally & Audit Hub</h2>
                 <span className="election-id-badge">ID: {electionId}</span>
             </div>
 
@@ -226,29 +227,29 @@ const TallyAudit = () => {
                         <div className="controls">
                             {!tallyStatus && isAdmin && (
                                 <button className="control-btn btn-start" onClick={handleStartTally} disabled={loading}>
-                                    🚀 Initialize Tally Protocol
+                                    <Rocket className="w-4 h-4 mr-2" /> Initialize Tally Protocol
                                 </button>
                             )}
 
                             {tallyStatus?.status === 'decryption_in_progress' && tallyStatus.completed_trustees >= tallyStatus.required_trustees && isAdmin && (
                                 <button className="control-btn btn-start" onClick={handleFinalizeTally} disabled={loading}>
-                                    🏁 Finalize & Publish Results
+                                    <Flag className="w-4 h-4 mr-2" /> Finalize & Publish Results
                                 </button>
                             )}
 
                             {tallyStatus?.status === 'completed' && (
                                 <div className="success-message" style={{ marginTop: '1rem', color: 'green', fontWeight: 'bold', textAlign: 'center' }}>
-                                    ✅ Tally Finalized
+                                    <CheckCircle className="inline-icon mr-2" /> Tally Finalized
                                 </div>
                             )}
                         </div>
                     </div>
 
                     <div className="tally-card">
-                        <h3>⚡ Circuit Breaker (US-53)</h3>
+                        <h3>Circuit Breaker (US-53)</h3>
                         {circuitBreaker ? (
                             <div className="cb-status">
-                                <span className="cb-icon">{circuitBreaker.state === 'closed' ? '🟢' : '🔴'}</span>
+                                <span className="cb-icon">{circuitBreaker.state === 'closed' ? <CheckCircle className="text-green-500" /> : <Shield className="text-red-500" />}</span>
                                 <div className={`cb-state state-${circuitBreaker.state}`}>
                                     {circuitBreaker.state}
                                 </div>
@@ -267,7 +268,7 @@ const TallyAudit = () => {
             {/* TRUSTEES TAB */}
             {activeTab === 'trustees' && (
                 <div className="tally-card">
-                    <h3>🗝️ Trustee Decryption Status</h3>
+                    <h3>Trustee Decryption Status</h3>
                     <div className="trustee-list">
                         {trustees.map(t => (
                             <div key={t.user_id} className="trustee-row">
@@ -298,7 +299,7 @@ const TallyAudit = () => {
             {activeTab === 'auditor' && (
                 <div className="tally-grid" style={{ gridTemplateColumns: '1fr' }}>
                     <div className="tally-card">
-                        <h3>📜 Ballot Manifest (US-54)</h3>
+                        <h3>Ballot Manifest (US-54)</h3>
                         {manifest ? (
                             <div className="code-block">
                                 {JSON.stringify(manifest, null, 2)}
@@ -308,7 +309,7 @@ const TallyAudit = () => {
 
                     <div className="tally-card">
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <h3>🔍 Reproducibility Report (US-59)</h3>
+                            <h3>Reproducibility Report (US-59)</h3>
                             <button className="refresh-btn" onClick={handleRecount}>Trigger Real Recount (US-52)</button>
                         </div>
                         {reproduceReport ? (
@@ -319,7 +320,7 @@ const TallyAudit = () => {
                     </div>
 
                     <div className="tally-card">
-                        <h3>📝 Tally Transcript (US-57)</h3>
+                        <h3>Tally Transcript (US-57)</h3>
                         {transcript ? (
                             <div className="code-block">
                                 {JSON.stringify(transcript, null, 2)}
@@ -332,7 +333,7 @@ const TallyAudit = () => {
             {/* NETWORK TAB */}
             {activeTab === 'network' && (
                 <div className="tally-card">
-                    <h3>🛡️ Network Isolation (US-60)</h3>
+                    <h3>Network Isolation (US-60)</h3>
                     {isolationStatus ? (
                         <div className="iso-grid">
                             <div className="iso-metric">

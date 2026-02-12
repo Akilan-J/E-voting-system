@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Lock, Receipt, Zap, RotateCw, CheckCircle, XCircle } from 'lucide-react';
 import { verificationAPI, resultsAPI, mockDataAPI } from '../services/api';
 import './VerificationPortal.css';
 
@@ -103,14 +104,14 @@ const VerificationPortal = () => {
 
     return (
         <div className="verification-portal">
-            <h2>🔐 Verification Center</h2>
+            <h2>Verification Center</h2>
 
             <div className="portal-grid">
                 {/* Receipt Verifier */}
                 {canReceipt && (
                     <div className={`verifier-card ${activeTab === 'receipt' ? 'ring-2' : ''}`}
                         onClick={() => setActiveTab('receipt')}>
-                        <h3>🧾 Voter Receipt Validator</h3>
+                        <h3>Voter Receipt Validator</h3>
                         <p className="verifier-desc">
                             Paste your unique receipt hash to verify that your ballot was included in the ledger.
                         </p>
@@ -140,7 +141,7 @@ const VerificationPortal = () => {
                 {canProof && (
                     <div className={`verifier-card ${activeTab === 'proof' ? 'ring-2' : ''}`}
                         onClick={() => setActiveTab('proof')}>
-                        <h3>⚡ Zero-Knowledge Proof Check</h3>
+                        <h3>Zero-Knowledge Proof Check</h3>
                         <p className="verifier-desc">
                             Independently audit the tally results by verifying the ZK proof bundle.
                         </p>
@@ -154,7 +155,7 @@ const VerificationPortal = () => {
                                     className="generate-proof-btn"
                                     disabled={loading || !electionId}
                                 >
-                                    <span>🔄</span> Generate Mock Proof
+                                    <span><RotateCw className="w-4 h-4" /></span> Generate Mock Proof
                                 </button>
                             </div>
                             <textarea
@@ -186,7 +187,7 @@ const VerificationPortal = () => {
             {verificationResult && (
                 <div className={`verification-result ${verificationResult.success ? 'result-valid' : 'result-invalid'}`}>
                     <div className="result-header">
-                        <span className="result-icon">{verificationResult.success ? '✅' : '❌'}</span>
+                        <span className="result-icon">{verificationResult.success ? <CheckCircle className="text-green-500" /> : <XCircle className="text-red-500" />}</span>
                         <span className={`result-text ${verificationResult.success ? 'valid-text' : 'invalid-text'}`}>
                             {verificationResult.success ? 'Verification Successful' : 'Verification Failed'}
                         </span>

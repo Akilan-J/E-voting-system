@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { resultsAPI, mockDataAPI } from '../services/api';
+import { BarChart2, RefreshCw, Box, Users, Trophy, Hash, CheckCircle, XCircle, Loader, Link, Search } from 'lucide-react';
 import './ResultsDashboard.css';
 
 function ResultsDashboard() {
@@ -19,7 +20,7 @@ function ResultsDashboard() {
     try {
       const stats = await mockDataAPI.getElectionStats();
       const electionId = stats.data.election?.id;
-      
+
       if (!electionId) {
         setError('No election found. Start by creating votes in the Testing tab.');
         setLoading(false);
@@ -29,7 +30,7 @@ function ResultsDashboard() {
       try {
         const resultData = await resultsAPI.getByElectionId(electionId);
         setResults(resultData.data);
-        
+
         const summaryData = await resultsAPI.getSummary(electionId);
         setSummary(summaryData.data);
       } catch (err) {
@@ -43,7 +44,7 @@ function ResultsDashboard() {
 
   const verifyResults = async () => {
     if (!results?.election_id) return;
-    
+
     setVerificationStatus({ loading: true });
     try {
       const verification = await resultsAPI.verify(results.election_id);
@@ -86,11 +87,11 @@ function ResultsDashboard() {
     return (
       <div className="results-dashboard">
         <div className="empty-state">
-          <div className="empty-icon">📊</div>
+          <div className="empty-icon"><BarChart2 className="w-16 h-16 mx-auto" /></div>
           <h3>No Results Available</h3>
           <p>{error}</p>
           <button className="btn btn-primary" onClick={loadResults}>
-            🔄 Retry
+            <RefreshCw className="w-4 h-4 mr-2" /> Retry
           </button>
         </div>
       </div>
@@ -102,7 +103,7 @@ function ResultsDashboard() {
       {/* Header */}
       <div className="dashboard-header">
         <div className="header-left">
-          <h2>📊 Election Results</h2>
+          <h2>Election Results</h2>
           <p>{summary?.election?.title || 'Presidential Election 2026'}</p>
         </div>
         <div className="header-right">
@@ -110,7 +111,7 @@ function ResultsDashboard() {
             {summary?.election?.status || 'Pending'}
           </span>
           <button className="btn btn-icon" onClick={loadResults} title="Refresh">
-            🔄
+            <RefreshCw className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -118,21 +119,21 @@ function ResultsDashboard() {
       {/* Stats Cards */}
       <div className="stats-row">
         <div className="stat-card">
-          <div className="stat-icon">🗳️</div>
+          <div className="stat-icon"><Box className="w-6 h-6" /></div>
           <div className="stat-content">
             <span className="stat-value">{summary?.results?.total_votes || 0}</span>
             <span className="stat-label">Total Votes</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">👥</div>
+          <div className="stat-icon"><Users className="w-6 h-6" /></div>
           <div className="stat-content">
             <span className="stat-value">{Object.keys(summary?.results?.tally || {}).length}</span>
             <span className="stat-label">Candidates</span>
           </div>
         </div>
         <div className="stat-card highlight">
-          <div className="stat-icon">🏆</div>
+          <div className="stat-icon"><Trophy className="w-6 h-6" /></div>
           <div className="stat-content">
             <span className="stat-value">{winner ? winner[0] : '-'}</span>
             <span className="stat-label">Winner</span>
@@ -142,16 +143,16 @@ function ResultsDashboard() {
 
       {/* Vote Distribution */}
       <div className="section-card">
-        <h3>🗳️ Vote Distribution</h3>
+        <h3>Vote Distribution</h3>
         <div className="candidates-grid">
           {summary && Object.entries(summary.results?.tally || {}).map(([candidate, data], index) => {
             const isWinner = winner && winner[0] === candidate;
             const colors = ['#667eea', '#48bb78', '#ed8936', '#9f7aea', '#38b2ac'];
             const color = colors[index % colors.length];
-            
+
             return (
               <div key={candidate} className={`candidate-card ${isWinner ? 'winner' : ''}`}>
-                {isWinner && <div className="winner-badge">🏆 Winner</div>}
+                {isWinner && <div className="winner-badge"><Trophy className="w-3 h-3 mr-1" /> Winner</div>}
                 <div className="candidate-header">
                   <div className="candidate-avatar" style={{ background: color }}>
                     {candidate.charAt(0)}
@@ -165,9 +166,9 @@ function ResultsDashboard() {
                   </div>
                 </div>
                 <div className="vote-bar">
-                  <div 
-                    className="vote-bar-fill" 
-                    style={{ 
+                  <div
+                    className="vote-bar-fill"
+                    style={{
                       width: `${data.percentage}%`,
                       background: `linear-gradient(90deg, ${color}, ${color}dd)`
                     }}
@@ -181,8 +182,8 @@ function ResultsDashboard() {
 
       {/* Verification Section */}
       <div className="section-card verification-section">
-        <h3>🔐 Cryptographic Verification</h3>
-        
+        <h3>Cryptographic Verification</h3>
+
         <div className="verification-grid">
           <div className="verification-item">
             <span className="ver-label">Verification Hash</span>
@@ -190,14 +191,14 @@ function ResultsDashboard() {
               {results?.verification_hash || 'Not computed'}
             </code>
           </div>
-          
+
           <div className="verification-item">
             <span className="ver-label">Election ID</span>
             <code className="ver-value">
               {results?.election_id?.substring(0, 16)}...
             </code>
           </div>
-          
+
           {summary?.blockchain?.published && (
             <>
               <div className="verification-item">
@@ -219,18 +220,18 @@ function ResultsDashboard() {
         {/* Verification Status */}
         {verificationStatus && !verificationStatus.loading && (
           <div className={`verification-result ${verificationStatus.valid ? 'valid' : 'invalid'}`}>
-            <span className="ver-icon">{verificationStatus.valid ? '✅' : '❌'}</span>
+            <span className="ver-icon">{verificationStatus.valid ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}</span>
             <span className="ver-message">{verificationStatus.message}</span>
           </div>
         )}
 
         <div className="verification-actions">
-          <button 
-            className="btn btn-primary" 
+          <button
+            className="btn btn-primary"
             onClick={verifyResults}
             disabled={verificationStatus?.loading}
           >
-            {verificationStatus?.loading ? '⏳ Verifying...' : '🔍 Verify Results'}
+            {verificationStatus?.loading ? <><Loader className="w-4 h-4 mr-2 animate-spin" /> Verifying...</> : <><Search className="w-4 h-4 mr-2" /> Verify Results</>}
           </button>
         </div>
       </div>
@@ -238,9 +239,9 @@ function ResultsDashboard() {
       {/* Blockchain Status */}
       {summary?.blockchain?.published ? (
         <div className="section-card blockchain-section">
-          <h3>⛓️ Blockchain Record</h3>
+          <h3>Blockchain Record</h3>
           <div className="blockchain-status published">
-            <div className="blockchain-icon">✅</div>
+            <div className="blockchain-icon"><CheckCircle className="w-8 h-8" /></div>
             <div className="blockchain-info">
               <h4>Results Published to Blockchain</h4>
               <p>This election's results are immutably recorded on the ledger.</p>
@@ -250,9 +251,9 @@ function ResultsDashboard() {
         </div>
       ) : (
         <div className="section-card blockchain-section">
-          <h3>⛓️ Blockchain Record</h3>
+          <h3>Blockchain Record</h3>
           <div className="blockchain-status pending">
-            <div className="blockchain-icon">⏳</div>
+            <div className="blockchain-icon"><Loader className="w-8 h-8 animate-spin" /></div>
             <div className="blockchain-info">
               <h4>Not Yet Published</h4>
               <p>Results can be published to the blockchain after tallying is complete.</p>

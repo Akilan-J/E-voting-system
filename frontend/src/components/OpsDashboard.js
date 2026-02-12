@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { opsAPI, resultsAPI, authAPI } from '../services/api';
-import './OpsDashboard.css';
+import { ShieldCheck, RefreshCw, Zap, Box, Folder, FileText, Lock, Siren, Scale, Plus, AlertTriangle, CheckCircle, Info, Download, ChevronRight, X } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -287,16 +287,16 @@ const OpsDashboard = () => {
     return (
         <div className="ops-dashboard">
             <div className="dashboard-header">
-                <h2>🛡️ Ops & Transparency Dashboard</h2>
+                <h2>Ops & Transparency Dashboard</h2>
                 <div className="header-actions">
-                    <button className="btn-secondary" onClick={() => loadIncidents()}>🔄 Refresh</button>
+                    <button className="btn-secondary" onClick={() => loadIncidents()}><RefreshCw className="w-4 h-4 mr-2" /> Refresh</button>
                 </div>
             </div>
 
             {/* Top Metrics Section */}
             <div className="dashboard-grid">
                 <div className="card pulse-card">
-                    <h3>⚡ Election Pulse</h3>
+                    <h3>Election Pulse</h3>
                     {metrics ? (
                         <div className="stats-grid">
                             <div className="stat-item">
@@ -320,7 +320,7 @@ const OpsDashboard = () => {
                 </div>
 
                 <div className="card evidence-card">
-                    <h3>📦 Audit Artifacts</h3>
+                    <h3>Audit Artifacts</h3>
                     <div className="evidence-content">
                         <p className="description-text">
                             Verifiable evidence package including signed manifests, logs, and tally results.
@@ -332,7 +332,7 @@ const OpsDashboard = () => {
                                     className="download-btn w-full justify-center"
                                     disabled={!electionId}
                                 >
-                                    <span>📂</span> Download Evidence ZIP
+                                    <span><Folder className="w-4 h-4 mr-2" /></span> Download Evidence ZIP
                                 </button>
                                 <button
                                     onClick={handleDownloadCompliance}
@@ -340,7 +340,7 @@ const OpsDashboard = () => {
                                     disabled={!electionId}
                                     style={{ marginTop: '0.75rem' }}
                                 >
-                                    <span>📄</span> Download Compliance Report
+                                    <span><FileText className="w-4 h-4 mr-2" /></span> Download Compliance Report
                                 </button>
                             </>
                         ) : (
@@ -352,7 +352,7 @@ const OpsDashboard = () => {
 
             {canAccessControl && (
                 <div className="card access-card">
-                    <h3>🔐 Access Control</h3>
+                    <h3>Access Control</h3>
                     <p className="description-text">Assign roles and set trustee verification limits.</p>
                     <div className="access-table">
                         <div className="access-row access-header">
@@ -409,14 +409,14 @@ const OpsDashboard = () => {
                         className={`tab-btn ${activeTab === 'incidents' ? 'active' : ''}`}
                         onClick={() => setActiveTab('incidents')}
                     >
-                        🚨 Incident Response (US-70)
+                        <Siren className="w-4 h-4 mr-2" /> Incident Response (US-70)
                     </button>
                     {canViewDisputes && (
                         <button
                             className={`tab-btn ${activeTab === 'disputes' ? 'active' : ''}`}
                             onClick={() => setActiveTab('disputes')}
                         >
-                            ⚖️ Dispute Resolution (US-71)
+                            <Scale className="w-4 h-4 mr-2" /> Dispute Resolution (US-71)
                         </button>
                     )}
                 </div>
@@ -428,14 +428,14 @@ const OpsDashboard = () => {
                             <h4>Active Incidents</h4>
                             {canReportIncident && (
                                 <button className="action-btn" onClick={() => setShowIncidentModal(true)}>
-                                    + Report Incident
+                                    <Plus className="w-4 h-4 mr-1" /> Report Incident
                                 </button>
                             )}
                         </div>
 
                         <div className="incidents-list">
                             {incidents.length === 0 ? (
-                                <div className="empty-state">✅ No open incidents. Systems nominal.</div>
+                                <div className="empty-state"><CheckCircle className="inline-icon mr-2" /> No open incidents. Systems nominal.</div>
                             ) : (
                                 incidents.map(inc => (
                                     <div
@@ -496,7 +496,7 @@ const OpsDashboard = () => {
                                         <textarea className="form-textarea" placeholder="Explain why this dispute is valid..." required value={disputeForm.justification} onChange={e => setDisputeForm({ ...disputeForm, justification: e.target.value })} />
                                     </div>
                                     <div className="warning-box">
-                                        ⚠️ False disputes may result in credential revocation.
+                                        <AlertTriangle className="inline-icon mr-2" /> False disputes may result in credential revocation.
                                     </div>
                                     <button className="btn-primary w-full">Submit Case</button>
                                 </form>
@@ -526,7 +526,7 @@ const OpsDashboard = () => {
                                         </div>
                                         <h5 className="dispute-title">{dispute.title}</h5>
                                         <p className="dispute-desc">{dispute.description.split('\n')[0]}</p>
-                                        <div className="review-link">Review Evidence &gt;</div>
+                                        <div className="review-link">Review Evidence <ChevronRight className="w-3 h-3 ml-1" /></div>
                                     </div>
                                 ))}
                                 {disputes.length === 0 && (
@@ -544,7 +544,7 @@ const OpsDashboard = () => {
                     <div className="modal-content">
                         <div className="modal-header">
                             <h3>Report Alert</h3>
-                            <button onClick={() => setShowIncidentModal(false)} className="close-btn">✕</button>
+                            <button onClick={() => setShowIncidentModal(false)} className="close-btn"><X className="w-5 h-5" /></button>
                         </div>
                         <form onSubmit={handleReportIncident} className="form-stack">
                             <input className="form-input" placeholder="Title" value={newIncident.title} onChange={e => setNewIncident({ ...newIncident, title: e.target.value })} required />
@@ -572,7 +572,7 @@ const OpsDashboard = () => {
                                     <span className={`badge severity-${selectedRecord.severity}`}>{selectedRecord.severity}</span>
                                 )}
                             </div>
-                            <button onClick={() => setShowReviewModal(false)} className="close-btn">✕</button>
+                            <button onClick={() => setShowReviewModal(false)} className="close-btn"><X className="w-5 h-5" /></button>
                         </div>
 
                         <div className="modal-body mb-6">

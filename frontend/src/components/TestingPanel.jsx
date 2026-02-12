@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Play, RotateCw, CheckCircle, XCircle, AlertTriangle, ClipboardList, Loader, SkipForward, Terminal, Trash2, ChevronDown, ChevronRight, FlaskConical, BarChart } from 'lucide-react';
 import { mockDataAPI, tallyingAPI, resultsAPI } from '../services/api';
 import './TestingPanel.css';
 
@@ -61,15 +62,15 @@ function TestingPanel() {
 
   const updateStepStatusesFromStats = (data) => {
     if (!data) return;
-    
+
     setStepStatuses(prev => ({
       ...prev,
       setup: data.tallying?.started !== undefined ? STATUS.SUCCESS : STATUS.PENDING,
       votes: data.votes?.total > 0 ? STATUS.SUCCESS : STATUS.PENDING,
       ballots: data.votes?.total > 0 ? STATUS.SUCCESS : STATUS.PENDING,
       tally: data.tallying?.started ? STATUS.SUCCESS : STATUS.PENDING,
-      trustees: data.tallying?.trustees_completed >= 3 ? STATUS.SUCCESS : 
-                data.tallying?.trustees_completed > 0 ? STATUS.RUNNING : STATUS.PENDING,
+      trustees: data.tallying?.trustees_completed >= 3 ? STATUS.SUCCESS :
+        data.tallying?.trustees_completed > 0 ? STATUS.RUNNING : STATUS.PENDING,
       finalize: data.tallying?.status === 'completed' ? STATUS.SUCCESS : STATUS.PENDING,
       blockchain: data.blockchain?.published ? STATUS.SUCCESS : STATUS.PENDING
     }));
@@ -84,7 +85,7 @@ function TestingPanel() {
     setActiveStep('setup');
     updateStepStatus('setup', STATUS.RUNNING);
     addLog('Starting trustee setup...', 'info');
-    
+
     try {
       addLog('Generating 5 trustees with key shares...', 'info');
       const response = await mockDataAPI.setupTrustees();
@@ -105,11 +106,11 @@ function TestingPanel() {
     setActiveStep('votes');
     updateStepStatus('votes', STATUS.RUNNING);
     addLog(`Starting vote generation (${count} votes)...`, 'info');
-    
+
     try {
       addLog('Encrypting votes with Paillier homomorphic encryption...', 'info');
       addLog('This may take 15-30 seconds for 100 votes...', 'warning');
-      
+
       const response = await mockDataAPI.generateVotes(count);
       addLog(`Generated ${count} encrypted votes`, 'success');
       addLog(`Response: ${JSON.stringify(response.data)}`, 'debug');
@@ -134,7 +135,7 @@ function TestingPanel() {
     setActiveStep('tally');
     updateStepStatus('tally', STATUS.RUNNING);
     addLog('Starting tallying process...', 'info');
-    
+
     try {
       addLog('Aggregating encrypted votes homomorphically...', 'info');
       const response = await tallyingAPI.start(stats.election.id);
@@ -161,7 +162,7 @@ function TestingPanel() {
     setActiveStep('finalize');
     updateStepStatus('finalize', STATUS.RUNNING);
     addLog('Finalizing tally and computing results...', 'info');
-    
+
     try {
       addLog('Combining partial decryptions from trustees...', 'info');
       const response = await tallyingAPI.finalize(stats.election.id);
@@ -187,7 +188,7 @@ function TestingPanel() {
     setActiveStep('blockchain');
     updateStepStatus('blockchain', STATUS.RUNNING);
     addLog('Publishing results to blockchain...', 'info');
-    
+
     try {
       addLog('Creating immutable record on ledger...', 'info');
       const response = await resultsAPI.publishToBlockchain(stats.election.id);
@@ -206,7 +207,7 @@ function TestingPanel() {
   // Reset Everything
   const handleReset = async () => {
     if (!window.confirm('This will delete ALL data. Continue?')) return;
-    
+
     addLog('Resetting database...', 'warning');
     try {
       await mockDataAPI.resetDatabase();
@@ -228,27 +229,27 @@ function TestingPanel() {
 
   // Run Full Workflow
   const handleRunAll = async () => {
-    addLog('═══ Starting Full Workflow ═══', 'info');
-    
+    addLog('=== Starting Full Workflow ===', 'info');
+
     await handleSetupTrustees();
     await new Promise(r => setTimeout(r, 500));
-    
+
     await handleGenerateVotes(100);
     await new Promise(r => setTimeout(r, 500));
-    
+
     await handleStartTallying();
     await new Promise(r => setTimeout(r, 500));
-    
-    addLog('⚠️ Manual Step Required: Go to Trustees tab and decrypt with 3 trustees', 'warning');
+
+    addLog('[WARN] Manual Step Required: Go to Trustees tab and decrypt with 3 trustees', 'warning');
   };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case STATUS.SUCCESS: return '✅';
-      case STATUS.ERROR: return '❌';
-      case STATUS.RUNNING: return '⏳';
-      case STATUS.SKIPPED: return '⏭️';
-      default: return '○';
+      case STATUS.SUCCESS: return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case STATUS.ERROR: return <XCircle className="w-5 h-5 text-red-500" />;
+      case STATUS.RUNNING: return <Loader className="w-5 h-5 text-blue-500 animate-spin" />;
+      case STATUS.SKIPPED: return <SkipForward className="w-5 h-5 text-gray-400" />;
+      default: return <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>;
     }
   };
 
@@ -277,12 +278,12 @@ function TestingPanel() {
       {/* Header */}
       <div className="panel-header">
         <div className="header-content">
-          <h2>🧪 Workflow Testing Console</h2>
+          <h2>Workflow Testing Console</h2>
           <p>Execute and monitor the privacy-preserving tallying workflow</p>
         </div>
         <div className="header-actions">
           <button className="btn-icon" onClick={loadStats} title="Refresh Status">
-            🔄
+            <RotateCw className={`w-5 h-5 ${activeStep !== null ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -292,8 +293,8 @@ function TestingPanel() {
         {/* Left: Workflow Steps */}
         <div className="workflow-column">
           <div className="section-card">
-            <h3>📋 Workflow Steps</h3>
-            
+            <h3>Workflow Steps</h3>
+
             <div className="workflow-steps">
               {/* Step 1 */}
               <div className={`workflow-step ${getStatusClass(stepStatuses.setup)}`}>
@@ -304,7 +305,7 @@ function TestingPanel() {
                 <div className="step-content">
                   <h4>Setup Trustees</h4>
                   <p>Create 5 trustees with Shamir secret shares</p>
-                  <button 
+                  <button
                     className="btn btn-primary"
                     onClick={handleSetupTrustees}
                     disabled={activeStep !== null}
@@ -323,7 +324,7 @@ function TestingPanel() {
                 <div className="step-content">
                   <h4>Generate Encrypted Votes</h4>
                   <p>Create 100 mock votes with Paillier encryption</p>
-                  <button 
+                  <button
                     className="btn btn-primary"
                     onClick={() => handleGenerateVotes(100)}
                     disabled={activeStep !== null}
@@ -342,7 +343,7 @@ function TestingPanel() {
                 <div className="step-content">
                   <h4>Start Tallying</h4>
                   <p>Aggregate votes homomorphically</p>
-                  <button 
+                  <button
                     className="btn btn-primary"
                     onClick={handleStartTallying}
                     disabled={activeStep !== null || stepStatuses.votes !== STATUS.SUCCESS}
@@ -366,8 +367,8 @@ function TestingPanel() {
                       {stats?.tallying?.trustees_completed || 0}/3 completed
                     </span>
                     <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
+                      <div
+                        className="progress-fill"
                         style={{ width: `${((stats?.tallying?.trustees_completed || 0) / 3) * 100}%` }}
                       />
                     </div>
@@ -384,7 +385,7 @@ function TestingPanel() {
                 <div className="step-content">
                   <h4>Finalize Results</h4>
                   <p>Combine decryptions and compute final tally</p>
-                  <button 
+                  <button
                     className="btn btn-success"
                     onClick={handleFinalize}
                     disabled={activeStep !== null || (stats?.tallying?.trustees_completed || 0) < 3}
@@ -403,7 +404,7 @@ function TestingPanel() {
                 <div className="step-content">
                   <h4>Publish to Blockchain</h4>
                   <p>Create immutable record on ledger</p>
-                  <button 
+                  <button
                     className="btn btn-secondary"
                     onClick={handlePublishBlockchain}
                     disabled={activeStep !== null || stepStatuses.finalize !== STATUS.SUCCESS}
@@ -416,12 +417,12 @@ function TestingPanel() {
 
             {/* Quick Actions */}
             <div className="quick-actions">
-              <button 
+              <button
                 className="btn btn-outline"
                 onClick={handleRunAll}
                 disabled={activeStep !== null}
               >
-                ▶️ Run Steps 1-3 Automatically
+                <Play className="w-4 h-4 mr-2" /> Run Steps 1-3 Automatically
               </button>
             </div>
           </div>
@@ -431,7 +432,7 @@ function TestingPanel() {
         <div className="status-column">
           {/* Current Status */}
           <div className="section-card status-card">
-            <h3>📊 Current Status</h3>
+            <h3>Current Status</h3>
             {stats ? (
               <div className="status-grid">
                 <div className="status-item">
@@ -471,21 +472,21 @@ function TestingPanel() {
           {/* Console/Log */}
           <div className="section-card console-card">
             <div className="console-header">
-              <h3>🖥️ Execution Log</h3>
+              <h3>Execution Log</h3>
               <div className="console-actions">
-                <button 
-                  className="btn-icon" 
+                <button
+                  className="btn-icon"
                   onClick={() => setExpandedLogs(!expandedLogs)}
                   title={expandedLogs ? 'Collapse' : 'Expand'}
                 >
-                  {expandedLogs ? '▼' : '▶'}
+                  {expandedLogs ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
                 </button>
                 <button className="btn-icon" onClick={clearLogs} title="Clear">
-                  🗑️
+                  <Trash2 className="w-5 h-5" />
                 </button>
               </div>
             </div>
-            
+
             {expandedLogs && (
               <div className="console-container" ref={logContainerRef}>
                 {logs.length === 0 ? (
@@ -512,14 +513,14 @@ function TestingPanel() {
 
           {/* Danger Zone */}
           <div className="section-card danger-card">
-            <h3>⚠️ Danger Zone</h3>
+            <h3>Danger Zone</h3>
             <p>This will delete all data and reset the system</p>
-            <button 
+            <button
               className="btn btn-danger"
               onClick={handleReset}
               disabled={activeStep !== null}
             >
-              🗑️ Reset Database
+              <Trash2 className="w-4 h-4 mr-2" /> Reset Database
             </button>
           </div>
         </div>

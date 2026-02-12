@@ -12,6 +12,7 @@ import LedgerExplorer from './components/LedgerExplorer';
 import VoterAccess from './components/VoterAccess';
 import axios from 'axios';
 import { authAPI } from './services/api';
+import { Lock, Vote, BarChart2, User, Scale, Key, Link, FlaskConical, Shield, CheckCircle, TestTube2 } from 'lucide-react';
 
 function App() {
   const roleOrder = ['voter', 'trustee', 'auditor', 'security_engineer', 'admin'];
@@ -137,7 +138,7 @@ function App() {
           <div className="login-screen">
             <div className="login-card glass-panel">
               <div className="login-banner">
-                <h1>🔐 Two-Factor Authentication</h1>
+                <h1>Two-Factor Authentication</h1>
                 <p>Enter the code from your authenticator app</p>
               </div>
 
@@ -174,7 +175,7 @@ function App() {
         <div className="login-screen">
           <div className="login-card glass-panel">
             <div className="login-banner">
-              <h1>🗳️ E-Voting System</h1>
+              <h1>E-Voting System</h1>
               <p>Secure role-based access to election workflows</p>
             </div>
 
@@ -225,7 +226,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>🗳️ E-Voting System</h1>
+        <h1><Vote className="inline-icon mr-2" /> E-Voting System</h1>
         <p>Verification & Audit Ops</p>
         <div className="system-status">
           Backend: <span className={systemStatus.status === 'healthy' ? 'status-healthy' : 'status-offline'}>
@@ -243,47 +244,47 @@ function App() {
       <nav className="App-nav">
         {allowedTabs.includes('results') && (
           <button className={activeTab === 'results' ? 'active' : ''} onClick={() => setActiveTab('results')}>
-            📊 Results
+            Results
           </button>
         )}
         {allowedTabs.includes('voter') && (
           <button className={activeTab === 'voter' ? 'active' : ''} onClick={() => setActiveTab('voter')}>
-            👤 Voter Access
+            Voter Access
           </button>
         )}
         {allowedTabs.includes('tally') && (
           <button className={activeTab === 'tally' ? 'active' : ''} onClick={() => setActiveTab('tally')}>
-            ⚖️ Tally & Audit
+            Tally & Audit
           </button>
         )}
         {allowedTabs.includes('trustees') && (
           <button className={activeTab === 'trustees' ? 'active' : ''} onClick={() => setActiveTab('trustees')}>
-            🔐 Trustees
+            Trustees
           </button>
         )}
         {allowedTabs.includes('ledger') && (
           <button className={activeTab === 'ledger' ? 'active' : ''} onClick={() => setActiveTab('ledger')}>
-            🔗 Ledger
+            Ledger
           </button>
         )}
         {allowedTabs.includes('testing') && (
           <button className={activeTab === 'testing' ? 'active' : ''} onClick={() => setActiveTab('testing')}>
-            🧪 Testing
+            Testing
           </button>
         )}
         {allowedTabs.includes('ops') && (
           <button className={activeTab === 'ops' ? 'active' : ''} onClick={() => setActiveTab('ops')}>
-            🛡️ Ops Center
+            Ops Center
           </button>
         )}
         {allowedTabs.includes('verification') && (
           <button className={activeTab === 'verification' ? 'active' : ''} onClick={() => setActiveTab('verification')}>
-            ✅ Verification
+            Verification
           </button>
         )}
         {allowedTabs.includes('security') && (
           <button className={activeTab === 'security' ? 'active' : ''} onClick={() => setActiveTab('security')}>
-            🧪 Security Lab
+            Security Lab
           </button>
         )}
       </nav>

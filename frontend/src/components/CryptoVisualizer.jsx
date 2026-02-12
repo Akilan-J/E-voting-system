@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Lock, Unlock, BarChart2, Plus, Users, CheckCircle, Target, Calculator, Play, GraduationCap, ShieldCheck, FileText, User } from 'lucide-react';
 import { mockDataAPI, tallyingAPI, trusteesAPI, resultsAPI } from '../services/api';
 import './CryptoVisualizer.css';
 
@@ -56,20 +57,20 @@ function CryptoVisualizer() {
   // Step 1: Generate and encrypt votes
   const handleGenerateVotes = async () => {
     setIsLoading(true);
-    addLog('🔐 Starting vote encryption process...', 'info');
-    
+    addLog('[LOCK] Starting vote encryption process...', 'info');
+
     try {
       addLog('Generating Paillier keypair for election...', 'info');
       addLog('Splitting private key using Shamir Secret Sharing (3-of-5)...', 'info');
-      
+
       const response = await mockDataAPI.generateVotes(20, electionId);
-      
-      addLog(`✅ Successfully encrypted ${response.data.votes_generated} votes`, 'success');
+
+      addLog(`[SUCCESS] Successfully encrypted ${response.data.votes_generated} votes`, 'success');
       addLog('Each vote encrypted as: E(v) = gᵐ · rⁿ mod n²', 'info');
-      
+
       await loadData();
     } catch (err) {
-      addLog(`❌ Encryption failed: ${err.response?.data?.detail || err.message}`, 'error');
+      addLog(`[ERROR] Encryption failed: ${err.response?.data?.detail || err.message}`, 'error');
     }
     setIsLoading(false);
   };
@@ -77,21 +78,24 @@ function CryptoVisualizer() {
   // Step 2: Aggregate encrypted votes
   const handleStartTally = async () => {
     if (!electionId) return;
-    
+
     setIsLoading(true);
-    addLog('➕ Starting homomorphic aggregation...', 'info');
-    
+    addLog('[INFO] Starting homomorphic aggregation...', 'info');
+
     try {
       addLog('Multiplying ciphertexts: E(Σvᵢ) = ∏ E(vᵢ) mod n²', 'info');
-      
+
       const response = await tallyingAPI.start(electionId);
-      
-      addLog('✅ Votes aggregated without decryption!', 'success');
+
+
+
+      addLog('[SUCCESS] Votes aggregated without decryption!', 'success');
       addLog(`Session ID: ${response.data.session_id}`, 'info');
-      
+
       await loadData();
+
     } catch (err) {
-      addLog(`❌ Aggregation failed: ${err.response?.data?.detail || err.message}`, 'error');
+      addLog(`[ERROR] Aggregation failed: ${err.response?.data?.detail || err.message}`, 'error');
     }
     setIsLoading(false);
   };
@@ -99,22 +103,24 @@ function CryptoVisualizer() {
   // Step 3: Partial decryptions by trustees
   const handleTrusteeDecrypt = async (trusteeId, trusteeName) => {
     if (!electionId) return;
-    
+
     setIsLoading(true);
-    addLog(`🔓 ${trusteeName} computing partial decryption...`, 'info');
-    
+    addLog(`[INFO] ${trusteeName} computing partial decryption...`, 'info');
+
     try {
       await tallyingAPI.partialDecrypt(trusteeId, electionId);
-      
-      addLog(`✅ ${trusteeName} completed! (Share ${trustees.filter(t => t.has_decrypted).length + 1}/5)`, 'success');
-      
+
+
+
+      addLog(`[SUCCESS] ${trusteeName} completed! (Share ${trustees.filter(t => t.has_decrypted).length + 1}/5)`, 'success');
+
       await loadData();
-      
+
       if (tallyStatus?.partial_decryptions >= 3) {
-        addLog('🎯 Threshold reached! 3/5 trustees completed', 'success');
+        addLog('[TARGET] Threshold reached! 3/5 trustees completed', 'success');
       }
     } catch (err) {
-      addLog(`❌ ${trusteeName} failed: ${err.response?.data?.detail || err.message}`, 'error');
+      addLog(`[ERROR] ${trusteeName} failed: ${err.response?.data?.detail || err.message}`, 'error');
     }
     setIsLoading(false);
   };
@@ -122,21 +128,24 @@ function CryptoVisualizer() {
   // Step 4: Finalize with Lagrange interpolation
   const handleFinalize = async () => {
     if (!electionId) return;
-    
+
     setIsLoading(true);
-    addLog('🧮 Combining partial decryptions using Lagrange interpolation...', 'info');
-    
+    addLog('[INFO] Combining partial decryptions using Lagrange interpolation...', 'info');
+
     try {
       const response = await tallyingAPI.finalize(electionId);
-      
-      addLog('✅ Tally finalized! Results revealed:', 'success');
+
+
+
+      addLog('[SUCCESS] Tally finalized! Results revealed:', 'success');
       Object.entries(response.data.final_tally || {}).forEach(([candidate, count]) => {
         addLog(`  ${candidate}: ${count} votes`, 'info');
       });
-      
+
       await loadData();
+
     } catch (err) {
-      addLog(`❌ Finalization failed: ${err.response?.data?.detail || err.message}`, 'error');
+      addLog(`[ERROR] Finalization failed: ${err.response?.data?.detail || err.message}`, 'error');
     }
     setIsLoading(false);
   };
@@ -148,30 +157,30 @@ function CryptoVisualizer() {
     <div className="crypto-visualizer">
       {/* Header */}
       <div className="viz-header">
-        <h2>🔐 Cryptographic Process Visualization</h2>
+        <h2>Cryptographic Process Visualization</h2>
         <p>Real-time privacy-preserving tallying workflow</p>
       </div>
 
       {/* Current Status */}
       <div className="status-overview">
         <div className="status-card">
-          <span className="status-label">📊 Total Votes</span>
+          <span className="status-label"><BarChart2 className="w-4 h-4 mr-1" /> Total Votes</span>
           <span className="status-value">{stats?.votes?.total || 0}</span>
         </div>
         <div className="status-card">
-          <span className="status-label">🔐 Encrypted</span>
+          <span className="status-label"><Lock className="w-4 h-4 mr-1" /> Encrypted</span>
           <span className="status-value">{stats?.votes?.total || 0}</span>
         </div>
         <div className="status-card">
-          <span className="status-label">➕ Aggregated</span>
+          <span className="status-label"><Plus className="w-4 h-4 mr-1" /> Aggregated</span>
           <span className="status-value">{tallyStatus?.aggregated ? 'Yes' : 'No'}</span>
         </div>
         <div className="status-card">
-          <span className="status-label">👥 Trustees</span>
+          <span className="status-label"><Users className="w-4 h-4 mr-1" /> Trustees</span>
           <span className="status-value">{tallyStatus?.partial_decryptions || 0}/5</span>
         </div>
         <div className="status-card">
-          <span className="status-label">✅ Finalized</span>
+          <span className="status-label"><CheckCircle className="w-4 h-4 mr-1" /> Finalized</span>
           <span className="status-value">{results ? 'Yes' : 'No'}</span>
         </div>
       </div>
@@ -179,25 +188,25 @@ function CryptoVisualizer() {
       {/* Main Workflow Panel */}
       <div className="workflow-container">
         <div className="workflow-left">
-          <h3>🎯 Workflow Steps</h3>
-          
+          <h3>Workflow Steps</h3>
+
           {/* Step 1: Encryption */}
           <div className="workflow-step">
             <div className="step-header">
               <span className="step-number">1</span>
-              <h4>🔒 Paillier Encryption</h4>
+              <h4>Paillier Encryption</h4>
             </div>
             <p>Generate and encrypt votes using homomorphic encryption</p>
-            <button 
+            <button
               className="step-btn"
               onClick={handleGenerateVotes}
               disabled={isLoading || stats?.votes?.total > 0}
             >
-              {stats?.votes?.total > 0 ? '✅ Votes Generated' : '▶️ Generate Votes'}
+              {stats?.votes?.total > 0 ? <><CheckCircle className="w-4 h-4 mr-2" /> Votes Generated</> : <><Play className="w-4 h-4 mr-2" /> Generate Votes</>}
             </button>
             {stats?.votes?.total > 0 && (
               <div className="step-info">
-                <span>✓ {stats.votes.total} votes encrypted</span>
+                <span><CheckCircle className="w-3 h-3 inline mr-1" /> {stats.votes.total} votes encrypted</span>
                 <span>E(v) = gᵐ · rⁿ mod n²</span>
               </div>
             )}
@@ -207,19 +216,19 @@ function CryptoVisualizer() {
           <div className="workflow-step">
             <div className="step-header">
               <span className="step-number">2</span>
-              <h4>➕ Homomorphic Aggregation</h4>
+              <h4>Homomorphic Aggregation</h4>
             </div>
             <p>Multiply encrypted votes to add plaintexts without decryption</p>
-            <button 
+            <button
               className="step-btn"
               onClick={handleStartTally}
               disabled={isLoading || !stats?.votes?.total || tallyStatus?.aggregated}
             >
-              {tallyStatus?.aggregated ? '✅ Aggregated' : '▶️ Start Aggregation'}
+              {tallyStatus?.aggregated ? <><CheckCircle className="w-4 h-4 mr-2" /> Aggregated</> : <><Play className="w-4 h-4 mr-2" /> Start Aggregation</>}
             </button>
             {tallyStatus?.aggregated && (
               <div className="step-info">
-                <span>✓ All votes combined</span>
+                <span><CheckCircle className="w-3 h-3 inline mr-1" /> All votes combined</span>
                 <span>E(Σvᵢ) = ∏ E(vᵢ)</span>
               </div>
             )}
@@ -229,28 +238,28 @@ function CryptoVisualizer() {
           <div className="workflow-step">
             <div className="step-header">
               <span className="step-number">3</span>
-              <h4>🔓 Threshold Decryption (3-of-5)</h4>
+              <h4>Threshold Decryption (3-of-5)</h4>
             </div>
             <p>At least 3 trustees must provide partial decryptions</p>
-            
+
             <div className="trustees-grid">
               {trustees.map((trustee, idx) => (
-                <button 
+                <button
                   key={trustee.id}
                   className={`trustee-btn ${trustee.has_decrypted ? 'completed' : ''}`}
                   onClick={() => handleTrusteeDecrypt(trustee.id, `Trustee ${idx + 1}`)}
                   disabled={isLoading || !tallyStatus?.aggregated || trustee.has_decrypted || tallyStatus?.finalized}
                 >
-                  <span className="trustee-icon">👤</span>
+                  <span className="trustee-icon"><User className="w-4 h-4" /></span>
                   <span>Trustee {idx + 1}</span>
-                  {trustee.has_decrypted && <span className="check">✓</span>}
+                  {trustee.has_decrypted && <span className="check"><CheckCircle className="w-3 h-3" /></span>}
                 </button>
               ))}
             </div>
-            
+
             {tallyStatus?.partial_decryptions >= 3 && !tallyStatus?.finalized && (
               <div className="threshold-alert">
-                🎯 Threshold reached! Ready to finalize
+                <Target className="inline-icon mr-2" /> Threshold reached! Ready to finalize
               </div>
             )}
           </div>
@@ -259,19 +268,19 @@ function CryptoVisualizer() {
           <div className="workflow-step">
             <div className="step-header">
               <span className="step-number">4</span>
-              <h4>🧮 Lagrange Interpolation</h4>
+              <h4>Lagrange Interpolation</h4>
             </div>
             <p>Combine partial decryptions to reveal final tally</p>
-            <button 
+            <button
               className="step-btn"
               onClick={handleFinalize}
               disabled={isLoading || tallyStatus?.partial_decryptions < 3 || tallyStatus?.finalized}
             >
-              {tallyStatus?.finalized ? '✅ Finalized' : '▶️ Finalize Tally'}
+              {tallyStatus?.finalized ? <><CheckCircle className="w-4 h-4 mr-2" /> Finalized</> : <><Play className="w-4 h-4 mr-2" /> Finalize Tally</>}
             </button>
             {tallyStatus?.finalized && (
               <div className="step-info">
-                <span>✓ Results computed</span>
+                <span><CheckCircle className="w-3 h-3 inline mr-1" /> Results computed</span>
                 <span>m = L(∏ Dᵢ^λᵢ) · μ mod n</span>
               </div>
             )}
@@ -280,17 +289,17 @@ function CryptoVisualizer() {
           {/* Results Display */}
           {results && (
             <div className="results-panel">
-              <h3>🏆 Final Results</h3>
+              <h3>Final Results</h3>
               <div className="results-bars">
                 {Object.entries(results.results || {}).map(([candidate, count]) => {
                   const maxVotes = Math.max(...Object.values(results.results || {}));
                   const percentage = (count / maxVotes) * 100;
-                  
+
                   return (
                     <div key={candidate} className="result-row">
                       <span className="candidate-name">{candidate}</span>
                       <div className="bar-container">
-                        <div 
+                        <div
                           className="bar-fill"
                           style={{ width: `${percentage}%` }}
                         ></div>
@@ -301,7 +310,7 @@ function CryptoVisualizer() {
                 })}
               </div>
               <div className="privacy-notice">
-                🔒 Individual votes remain cryptographically hidden
+                <Lock className="inline-icon mr-2" /> Individual votes remain cryptographically hidden
               </div>
             </div>
           )}
@@ -310,7 +319,7 @@ function CryptoVisualizer() {
         {/* Console Logs */}
         <div className="workflow-right">
           <div className="console-header">
-            <h3>📝 Live Console</h3>
+            <h3>Live Console</h3>
             <button className="clear-btn" onClick={clearLogs}>Clear</button>
           </div>
           <div className="console-logs">
@@ -333,7 +342,7 @@ function CryptoVisualizer() {
       {/* Info Section */}
       <div className="info-panel">
         <div className="info-card">
-          <h4>🎓 How It Works</h4>
+          <h4>How It Works</h4>
           <ul>
             <li><strong>Paillier Encryption:</strong> Homomorphic cryptosystem allows computing on encrypted data (E(a) × E(b) = E(a+b))</li>
             <li><strong>Zero-Knowledge Proofs:</strong> Each vote includes proof of validity without revealing the choice</li>
@@ -343,7 +352,7 @@ function CryptoVisualizer() {
           </ul>
         </div>
         <div className="info-card">
-          <h4>🔒 Privacy Guarantees</h4>
+          <h4>Privacy Guarantees</h4>
           <ul>
             <li>Individual votes are never revealed, even after tallying</li>
             <li>Only aggregate totals can be computed</li>

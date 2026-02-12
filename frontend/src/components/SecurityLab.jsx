@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { securityAPI, resultsAPI } from '../services/api';
+import { FlaskConical, FileText, Receipt, Zap, Search, CheckCircle, XCircle, RefreshCw, Radio, AlertTriangle, Monitor, UserCheck, X } from 'lucide-react';
 import './SecurityLab.css';
 
 const SecurityLab = () => {
@@ -73,7 +74,7 @@ const SecurityLab = () => {
             });
 
             if (res.data.detected_by_ids) {
-                addLog("✅ Threat neutralized by IDS", "success");
+                addLog(<><CheckCircle className="inline-icon w-3 h-3" /> Threat neutralized by IDS</>, "success");
             }
 
             // Refresh anomalies if new ones generated
@@ -160,7 +161,7 @@ const SecurityLab = () => {
     return (
         <div className="security-lab">
             <div className="security-header">
-                <h2>🧪 Security & Threat Lab</h2>
+                <h2>Security & Threat Lab</h2>
                 <div className="status-badge">System Status: <span>ARMED</span></div>
                 <div className="header-actions">
                     <button
@@ -168,14 +169,14 @@ const SecurityLab = () => {
                         onClick={handleDownloadAnomalyReport}
                         disabled={exporting}
                     >
-                        📄 Export Anomaly Report
+                        <FileText className="w-4 h-4 mr-2" /> Export Anomaly Report
                     </button>
                     <button
                         className="audit-btn"
                         onClick={handleDownloadTimeline}
                         disabled={exporting || !electionId}
                     >
-                        🧾 Export Replay Timeline
+                        <Receipt className="w-4 h-4 mr-2" /> Export Replay Timeline
                     </button>
                 </div>
             </div>
@@ -183,7 +184,7 @@ const SecurityLab = () => {
             <div className="lab-grid">
                 {/* Threat Simulator */}
                 <div className="security-card card-warning">
-                    <h3>⚡ Threat Simulator</h3>
+                    <h3>Threat Simulator</h3>
                     {canOperate ? (
                         <div className="simulation-controls">
                             <p className="card-description">Inject synthetic attacks to test system resilience.</p>
@@ -215,7 +216,7 @@ const SecurityLab = () => {
 
                 {/* Ledger Audit */}
                 <div className={`security-card card-audit ${replayStats?.status === 'Auditing...' ? 'audit-active' : ''}`}>
-                    <h3>🔍 Deep Ledger Audit</h3>
+                    <h3>Deep Ledger Audit</h3>
                     <p className="card-description">Recompute cryptographic hash chain from genesis block to verify immutable integrity.</p>
 
                     {!replayStats || replayStats.status === 'Auditing...' ? (
@@ -232,7 +233,7 @@ const SecurityLab = () => {
                                         </>
                                     ) : (
                                         <>
-                                            🚀 Run Full Replay Audit
+                                            <Zap className="w-4 h-4 mr-2" /> Run Full Replay Audit
                                         </>
                                     )}
                                 </button>
@@ -257,7 +258,7 @@ const SecurityLab = () => {
                         <div className="audit-result-container">
                             {/* Result State */}
                             <div className={`verified-badge ${replayStats.status === 'Integrity Verified' ? '' : 'error'}`}>
-                                {replayStats.status === 'Integrity Verified' ? '✅ Integrity Verified' : '❌ Corruption Detected'}
+                                {replayStats.status === 'Integrity Verified' ? <><CheckCircle className="inline-icon mr-2" /> Integrity Verified</> : <><XCircle className="inline-icon mr-2" /> Corruption Detected</>}
                             </div>
 
                             {replayStats.data && (
@@ -293,7 +294,7 @@ const SecurityLab = () => {
 
                 {/* Anomaly Monitor */}
                 <div className="security-card card-info">
-                    <h3>📡 Active Anomalies</h3>
+                    <h3>Active Anomalies</h3>
                     <div className="anomaly-list">
                         {anomalies.length === 0 ? (
                             <p className="card-description" style={{ textAlign: 'center', padding: '1rem' }}>No active anomalies detected.</p>
@@ -301,7 +302,7 @@ const SecurityLab = () => {
                             anomalies.map((anom, i) => (
                                 <div className="anomaly-item" key={i}>
                                     <div>
-                                        <div className="anomaly-title">⚠️ {anom.type}</div>
+                                        <div className="anomaly-title"><AlertTriangle className="inline-icon mr-1 w-3 h-3 text-yellow-500" /> {anom.type}</div>
                                         <div className="anomaly-meta">{new Date(anom.timestamp).toLocaleTimeString()} • {anom.severity.toUpperCase()}</div>
                                     </div>
                                     {canOperate && (
@@ -321,7 +322,7 @@ const SecurityLab = () => {
 
             {/* Live Terminal */}
             <div className="terminal-section">
-                <h3>🖥️ Security Event Stream</h3>
+                <h3>Security Event Stream</h3>
                 <div className="terminal-window" ref={terminalRef}>
                     <div className="terminal-line log-info">System initialized. Monitoring active...</div>
                     {logs.map((log, i) => (
@@ -339,8 +340,8 @@ const SecurityLab = () => {
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="modal-header">
-                            <h3>🕵️ Anomaly Investigation</h3>
-                            <button onClick={closeInvestigation} className="close-btn">✕</button>
+                            <h3>Anomaly Investigation</h3>
+                            <button onClick={closeInvestigation} className="close-btn"><X className="w-5 h-5" /></button>
                         </div>
 
                         <div className="modal-body">

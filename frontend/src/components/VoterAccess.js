@@ -1,7 +1,7 @@
 /* global BigInt */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Shield, Lock, CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
+import { Vote, Search, Lock, CheckCircle, Shield, User, Fingerprint, AlertCircle } from 'lucide-react';
 import './VoterAccess.css';
 
 const VoterAccess = ({ authRole }) => {
@@ -344,7 +344,7 @@ const VoterAccess = ({ authRole }) => {
   if (step === 'voted') {
     return (
       <div className="voter-access project-box">
-        <h2>🗳️ Vote Submitted</h2>
+        <h2>Vote Submitted</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
           <CheckCircle size={64} color="#10b981" style={{ marginBottom: '1rem' }} />
           <h3>Thank you for voting!</h3>
@@ -370,7 +370,7 @@ const VoterAccess = ({ authRole }) => {
   if (!authRole) {
     return (
       <div className="voter-access project-box">
-        <h2>👤 Voter Access</h2>
+        <h2>Voter Access</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
           <Lock size={48} color="#6b7280" style={{ marginBottom: '1rem' }} />
           <h3>Authentication Required</h3>
@@ -383,7 +383,7 @@ const VoterAccess = ({ authRole }) => {
   if (authRole !== 'voter') {
     return (
       <div className="voter-access project-box">
-        <h2>👤 Voter Access</h2>
+        <h2>Voter Access</h2>
         <div className="login-card" style={{ maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
           <AlertCircle size={48} color="#b45309" style={{ marginBottom: '1rem' }} />
           <h3>Restricted Access</h3>
@@ -396,7 +396,7 @@ const VoterAccess = ({ authRole }) => {
   // Dashboard View for Voter
   return (
     <div className="voter-access project-box">
-      <h2>👤 Voter Access & Credentials</h2>
+      <h2>Voter Access & Credentials</h2>
 
       <div className="dashboard-controls">
         <div className="status-bar">
@@ -409,7 +409,7 @@ const VoterAccess = ({ authRole }) => {
         <div className="control-panel">
           <div className="card">
             <div className="card-header">
-              <h3>🛡️ Security Settings</h3>
+              <h3>Security Settings</h3>
             </div>
             {!mfaData ? (
               <button className="auth-btn" style={{ marginTop: '1rem' }} onClick={setupMfa}>Enable 2FA Protection</button>
@@ -431,7 +431,7 @@ const VoterAccess = ({ authRole }) => {
           </div>
 
           <div className="card">
-            <h3>🗳️ Election Actions</h3>
+            <h3>Election Actions</h3>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', alignItems: 'center' }}>
               <button className="refresh-btn" onClick={checkEligibility}>Check Eligibility</button>
               {eligibility && (
@@ -449,7 +449,7 @@ const VoterAccess = ({ authRole }) => {
             </button>
             {signature && (
               <div className="credential-box">
-                <h4>✅ Credential Issued</h4>
+                <h4>Credential Issued</h4>
                 <p><small style={{ color: '#10b981' }}>Ready to Vote</small></p>
                 {!electionData && (
                   <p style={{ marginTop: '0.5rem', color: '#b45309', fontSize: '0.85rem' }}>
@@ -467,7 +467,9 @@ const VoterAccess = ({ authRole }) => {
         <div className="voting-booth" style={{ marginTop: '2rem', padding: '1.5rem', background: 'white', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
           {electionData ? (
             <>
-              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ {uiText[language]?.votingBooth || uiText.en.votingBooth}: {electionData.title}</h2>
+              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Vote className="w-6 h-6" /> {uiText[language]?.votingBooth || uiText.en.votingBooth}: {electionData.title}
+              </h2>
               <p style={{ color: '#666', marginBottom: '1rem' }}>{uiText[language]?.selectCandidate || uiText.en.selectCandidate}</p>
 
               <div className="language-row" style={{ marginBottom: '1.5rem' }}>
@@ -514,7 +516,7 @@ const VoterAccess = ({ authRole }) => {
                   style={{ marginTop: '2rem', background: '#2563eb', fontSize: '1.05rem' }}
                   onClick={() => setShowPreview(true)}
                 >
-                  🔎 {uiText[language]?.review || uiText.en.review}
+                  <Search className="w-4 h-4 mr-2" /> {uiText[language]?.review || uiText.en.review}
                 </button>
               )}
 
@@ -532,7 +534,7 @@ const VoterAccess = ({ authRole }) => {
                       {uiText[language]?.back || uiText.en.back}
                     </button>
                     <button className="auth-btn" style={{ background: '#ec4899' }} onClick={castVote}>
-                      🔒 {uiText[language]?.confirmVote || uiText.en.confirmVote}
+                      <Lock className="w-4 h-4 mr-2" /> {uiText[language]?.confirmVote || uiText.en.confirmVote}
                     </button>
                   </div>
                 </div>
@@ -551,7 +553,9 @@ const VoterAccess = ({ authRole }) => {
             </>
           ) : (
             <>
-              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem' }}>🗳️ Voting Booth</h2>
+              <h2 style={{ borderBottom: '2px solid #3b82f6', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Vote className="w-6 h-6" /> Voting Booth
+              </h2>
               <p style={{ color: '#666', marginBottom: '1rem' }}>Election details could not be loaded yet.</p>
               {electionError && <p style={{ color: '#b45309', marginBottom: '1rem' }}>{electionError}</p>}
               <button className="auth-btn" onClick={handleElectionReload}>

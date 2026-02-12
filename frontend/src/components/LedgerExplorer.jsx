@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, Box, FileText, CheckCircle, AlertTriangle, RefreshCw, ClipboardList, AlertCircle, Lightbulb } from 'lucide-react';
 import './LedgerExplorer.css';
 
 function LedgerExplorer() {
@@ -43,7 +44,7 @@ function LedgerExplorer() {
       {/* Header */}
       <div className="explorer-header">
         <div className="header-content">
-          <h2>🔗 Immutable Vote Ledger</h2>
+          <h2>Immutable Vote Ledger</h2>
           <p>Blockchain-based vote record with cryptographic integrity</p>
         </div>
         <div className="header-actions">
@@ -51,7 +52,7 @@ function LedgerExplorer() {
             {lastUpdated ? `Updated: ${lastUpdated}` : 'Connecting...'}
           </span>
           <button className="btn btn-refresh" onClick={fetchData}>
-            🔄 Refresh
+            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
           </button>
         </div>
       </div>
@@ -59,14 +60,14 @@ function LedgerExplorer() {
       {/* Chain Status */}
       <div className="status-row">
         <div className="status-card">
-          <div className="status-icon">📦</div>
+          <div className="status-icon"><Box className="w-6 h-6" /></div>
           <div className="status-info">
             <span className="status-value">{blocks.length}</span>
             <span className="status-label">Total Blocks</span>
           </div>
         </div>
         <div className="status-card">
-          <div className="status-icon">📝</div>
+          <div className="status-icon"><FileText className="w-6 h-6" /></div>
           <div className="status-info">
             <span className="status-value">
               {blocks.reduce((sum, b) => sum + (b.entry_count || 0), 0)}
@@ -75,7 +76,7 @@ function LedgerExplorer() {
           </div>
         </div>
         <div className={`status-card ${chainStatus?.valid ? 'valid' : 'warning'}`}>
-          <div className="status-icon">{chainStatus?.valid ? '✅' : '⚠️'}</div>
+          <div className="status-icon">{chainStatus?.valid ? <CheckCircle className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}</div>
           <div className="status-info">
             <span className="status-value">
               {chainStatus?.valid ? 'Valid' : chainStatus?.reason || 'Pending'}
@@ -87,8 +88,8 @@ function LedgerExplorer() {
 
       {/* Blocks List */}
       <div className="blocks-section">
-        <h3>📋 Block History</h3>
-        
+        <h3>Block History</h3>
+
         {loading && blocks.length === 0 && (
           <div className="loading-state">
             <div className="spinner"></div>
@@ -98,15 +99,15 @@ function LedgerExplorer() {
 
         {error && (
           <div className="error-state">
-            <span className="error-icon">⚠️</span>
-            <p>Connection Error: {error}</p>
+            <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
+            <p>{error}</p>
             <span>Is the backend running?</span>
           </div>
         )}
 
         {!loading && blocks.length === 0 && !error && (
           <div className="empty-state">
-            <div className="empty-icon">🔗</div>
+            <div className="empty-icon"><Link className="w-12 h-12 text-gray-400" /></div>
             <h4>No Blocks Yet</h4>
             <p>The blockchain will populate once election results are published.</p>
           </div>
@@ -115,14 +116,14 @@ function LedgerExplorer() {
         {blocks.length > 0 && (
           <div className="blocks-list">
             {blocks.map((block, index) => (
-              <div 
-                key={block.height} 
+              <div
+                key={block.height}
                 className={`block-card ${block.height === 0 ? 'genesis' : ''}`}
               >
                 <div className="block-connector">
                   {index < blocks.length - 1 && <div className="connector-line"></div>}
                 </div>
-                
+
                 <div className="block-content">
                   <div className="block-header">
                     <div className="block-title">
@@ -157,7 +158,7 @@ function LedgerExplorer() {
 
                   <div className="block-footer">
                     <div className="entry-badge">
-                      📝 {block.entry_count || 0} entries
+                      <FileText className="w-4 h-4 mr-1" /> {block.entry_count || 0} entries
                     </div>
                   </div>
                 </div>
@@ -169,11 +170,11 @@ function LedgerExplorer() {
 
       {/* Info Card */}
       <div className="info-card">
-        <div className="info-icon">💡</div>
+        <div className="info-icon"><Lightbulb className="w-6 h-6 text-yellow-500" /></div>
         <div className="info-content">
           <h4>About the Immutable Ledger</h4>
           <p>
-            Each block contains a cryptographic hash linking it to the previous block, 
+            Each block contains a cryptographic hash linking it to the previous block,
             creating an immutable chain. The Merkle root summarizes all entries in the block.
             Any tampering would break the hash chain and be immediately detectable.
           </p>
