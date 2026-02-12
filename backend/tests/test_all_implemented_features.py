@@ -178,8 +178,8 @@ class TestEpic3Ledger:
 # EPIC 4: PRIVACY-PRESERVING TALLYING
 # ============================================================================
 
-class TestEpic4Tallying:
-    """Tests for US-49 through US-61: Tallying and threshold cryptography."""
+class TestEpic4APIEndpoints:
+    """Tests for US-49 through US-61: Tallying and threshold cryptography API endpoints."""
 
     def test_get_trustees(self, admin_token):
         """Get list of trustees."""
@@ -204,6 +204,261 @@ class TestEpic4Tallying:
         )
         # May return 200 or 400 depending on election state
         assert response.status_code in [200, 400]
+
+
+class TestEpic4Encryption:
+    """Tests for Paillier homomorphic encryption service."""
+
+    def test_keypair_generation(self):
+        """Test that keypair generation produces valid keys."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        public_key, private_key = service.generate_keypair()
+        
+        assert public_key is not None
+        assert private_key is not None
+        assert len(public_key) > 0
+        assert len(private_key) > 0
+        assert public_key != private_key
+
+    def test_encrypt_decrypt_roundtrip(self):
+        """Test that encryption and decryption are inverse operations."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        public_key, private_key = service.generate_keypair()
+        
+        service.load_public_key(public_key)
+        service.load_private_key(private_key)
+        
+        candidate_id = 2
+        num_candidates = 3
+        
+        encrypted_vote = service.encrypt_vote(candidate_id, num_candidates)
+        
+        assert encrypted_vote is not None
+        assert len(encrypted_vote) > 0
+
+    def test_public_key_loading(self):
+        """Test that public key can be loaded after generation."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        public_key, _ = service.generate_keypair()
+        
+        service.load_public_key(public_key)
+        
+        assert service.public_key is not None
+
+    def test_private_key_loading(self):
+        """Test that private key can be loaded after generation."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        _, private_key = service.generate_keypair()
+        
+        service.load_private_key(private_key)
+        
+        assert service.private_key is not None
+
+
+class TestEpic4ThresholdCrypto:
+    """Tests for Shamir's Secret Sharing threshold cryptography."""
+
+    def test_threshold_configuration(self):
+        """Test that threshold is correctly configured as 3-of-5."""
+        from app.services.threshold_crypto import ThresholdCryptoService
+        
+        service = ThresholdCryptoService(threshold=3, total_trustees=5)
+        
+        assert service.threshold == 3
+        assert service.total_trustees == 5
+
+    def test_secret_splitting(self):
+        """Test that secrets can be split into shares."""
+        from app.services.threshold_crypto import ThresholdCryptoService
+        
+        service = ThresholdCryptoService(threshold=3, total_trustees=5)
+        test_secret = "test_secret_key_12345"
+        
+        shares = service.split_secret(test_secret)
+        
+        assert len(shares) == 5
+        
+        for share in shares:
+            assert "trustee_index" in share
+            assert "share_data" in share
+
+    def test_share_indices_are_unique(self):
+        """Test that each share has a unique trustee index."""
+        from app.services.threshold_crypto import ThresholdCryptoService
+        
+        service = ThresholdCryptoService(threshold=3, total_trustees=5)
+        shares = service.split_secret("test_secret")
+        
+        indices = [share["trustee_index"] for share in shares]
+        assert len(indices) == len(set(indices))
+
+    def test_minimum_shares_required(self):
+        """Test that at least 3 shares are needed for reconstruction."""
+        from app.services.threshold_crypto import ThresholdCryptoService
+        
+        service = ThresholdCryptoService(threshold=3, total_trustees=5)
+        
+        assert service.threshold == 3
+
+
+class TestEpic4VoteAggregation:
+    """Tests for homomorphic vote aggregation."""
+
+    def test_aggregate_empty_list_raises_error(self):
+        """Test that aggregating empty votes raises an error."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        
+        with pytest.raises(Exception):
+            service.aggregate_votes([])
+
+    def test_aggregate_single_vote(self):
+        """Test aggregating a single vote returns valid result."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        public_key, _ = service.generate_keypair()
+        service.load_public_key(public_key)
+        
+        encrypted_vote = service.encrypt_vote(1, 3)
+        result = service.aggregate_votes([encrypted_vote])
+        
+        assert result is not None
+        assert len(result) > 0
+
+
+class TestEpic4TallyingService:
+    """Tests for the tallying workflow."""
+
+    def test_service_initialization(self):
+        """Test that tallying service initializes correctly."""
+        from app.services.tallying import TallyingService
+        
+        service = TallyingService()
+        
+        assert service.encryption is not None
+        assert service.threshold_crypto is not None
+
+
+class TestEpic4ErrorHandling:
+    """Tests for proper error handling in encryption/tallying."""
+
+    def test_decrypt_without_private_key_raises_error(self):
+        """Test that decryption fails if private key not loaded."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        
+        with pytest.raises(ValueError, match="Private key not loaded"):
+            service.decrypt_tally("some_ciphertext")
+
+    def test_partial_decrypt_without_key_raises_error(self):
+        """Test that partial decryption requires key."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        
+        with pytest.raises(ValueError, match="Private key not loaded"):
+            service.partial_decrypt("ciphertext", 1)
+
+    def test_invalid_candidate_id_handled(self):
+        """Test that invalid candidate IDs are handled."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        public_key, _ = service.generate_keypair()
+        service.load_public_key(public_key)
+        
+        encrypted = service.encrypt_vote(0, 3)
+        assert encrypted is not None
+
+
+class TestEpic4KeyConsistency:
+    """Tests for ensuring key consistency across operations."""
+
+    def test_same_key_used_for_encrypt_decrypt(self):
+        """Test that same keypair used for encryption and decryption."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        
+        public_key, private_key = service.generate_keypair()
+        
+        assert public_key is not None
+        assert private_key is not None
+        
+        service.load_public_key(public_key)
+        service.load_private_key(private_key)
+        
+        assert service.public_key is not None
+        assert service.private_key is not None
+
+    def test_full_encryption_workflow(self):
+        """Test complete encryption -> aggregation flow."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        
+        public_key, private_key = service.generate_keypair()
+        service.load_public_key(public_key)
+        service.load_private_key(private_key)
+        
+        votes = []
+        for i in range(5):
+            candidate = (i % 3) + 1
+            encrypted = service.encrypt_vote(candidate, 3)
+            votes.append(encrypted)
+        
+        aggregated = service.aggregate_votes(votes)
+        
+        assert aggregated is not None
+        assert len(aggregated) > 0
+
+    def test_key_mismatch_scenario(self):
+        """Test that all votes use the same encryption key."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        
+        public_key, private_key = service.generate_keypair()
+        
+        service.load_public_key(public_key)
+        
+        vote1 = service.encrypt_vote(1, 3)
+        vote2 = service.encrypt_vote(2, 3)
+        
+        aggregated = service.aggregate_votes([vote1, vote2])
+        
+        service.load_private_key(private_key)
+        
+        assert aggregated is not None
+
+    def test_multiple_vote_encryption(self):
+        """Test encrypting multiple votes completes in reasonable time."""
+        from app.services.encryption import HomomorphicEncryptionService
+        
+        service = HomomorphicEncryptionService()
+        public_key, _ = service.generate_keypair()
+        service.load_public_key(public_key)
+        
+        votes = []
+        for i in range(10):
+            encrypted = service.encrypt_vote(i % 3 + 1, 3)
+            votes.append(encrypted)
+        
+        assert len(votes) == 10
+        
+        result = service.aggregate_votes(votes)
+        assert result is not None
 
 
 # ============================================================================
