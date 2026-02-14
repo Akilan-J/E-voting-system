@@ -4,6 +4,9 @@ import { trusteesAPI, tallyingAPI, mockDataAPI } from '../services/api';
 import CryptoVisualizer from './CryptoVisualizer';
 import './TrusteePanel.css';
 
+// Use the same demo election ID as VoterAccess and TestingPanel
+const DEMO_ELECTION_ID = "00000000-0000-0000-0000-000000000001";
+
 function TrusteePanel() {
   const authRole = localStorage.getItem('authRole');
   const canDecrypt = authRole === 'trustee';
@@ -37,11 +40,11 @@ function TrusteePanel() {
 
   const loadElectionInfo = async () => {
     try {
-      const stats = await mockDataAPI.getElectionStats();
-      setElectionId(stats.data.election?.id);
+      const stats = await mockDataAPI.getElectionStats(DEMO_ELECTION_ID);
+      setElectionId(DEMO_ELECTION_ID);
 
       if (stats.data.tallying?.started) {
-        const status = await tallyingAPI.getStatus(stats.data.election.id);
+        const status = await tallyingAPI.getStatus(DEMO_ELECTION_ID);
         setTallyStatus(status.data);
       }
     } catch (err) {
@@ -50,16 +53,11 @@ function TrusteePanel() {
   };
 
   const handlePartialDecrypt = async (trusteeId, trusteeName) => {
-    if (!electionId) {
-      setMessage({ type: 'error', text: 'No election found. Please generate votes first.' });
-      return;
-    }
-
     setLoading(prev => ({ ...prev, [trusteeId]: true }));
     setMessage(null);
 
     try {
-      await tallyingAPI.partialDecrypt(trusteeId, electionId);
+      await tallyingAPI.partialDecrypt(trusteeId, DEMO_ELECTION_ID);
       setMessage({ type: 'success', text: `${trusteeName} completed partial decryption!` });
       setDecryptedTrustees(prev => new Set([...prev, trusteeId]));
       await loadElectionInfo();

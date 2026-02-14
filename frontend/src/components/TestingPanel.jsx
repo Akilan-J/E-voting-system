@@ -3,6 +3,9 @@ import { Play, RotateCw, CheckCircle, XCircle, AlertTriangle, ClipboardList, Loa
 import { mockDataAPI, tallyingAPI, resultsAPI } from '../services/api';
 import './TestingPanel.css';
 
+// Use the same demo election ID as VoterAccess
+const DEMO_ELECTION_ID = "00000000-0000-0000-0000-000000000001";
+
 // Step status constants
 const STATUS = {
   PENDING: 'pending',
@@ -50,7 +53,7 @@ function TestingPanel() {
 
   const loadStats = async () => {
     try {
-      const response = await mockDataAPI.getElectionStats();
+      const response = await mockDataAPI.getElectionStats(DEMO_ELECTION_ID);
       setStats(response.data);
       updateStepStatusesFromStats(response.data);
       return response.data;
@@ -111,7 +114,7 @@ function TestingPanel() {
       addLog('Encrypting votes with Paillier homomorphic encryption...', 'info');
       addLog('This may take 15-30 seconds for 100 votes...', 'warning');
 
-      const response = await mockDataAPI.generateVotes(count);
+      const response = await mockDataAPI.generateVotes(count, DEMO_ELECTION_ID);
       addLog(`Generated ${count} encrypted votes`, 'success');
       addLog(`Response: ${JSON.stringify(response.data)}`, 'debug');
       updateStepStatus('votes', STATUS.SUCCESS);
@@ -127,18 +130,13 @@ function TestingPanel() {
 
   // Step 3: Start Tallying
   const handleStartTallying = async () => {
-    if (!stats?.election?.id) {
-      addLog('No election found. Please generate votes first.', 'error');
-      return;
-    }
-
     setActiveStep('tally');
     updateStepStatus('tally', STATUS.RUNNING);
     addLog('Starting tallying process...', 'info');
 
     try {
       addLog('Aggregating encrypted votes homomorphically...', 'info');
-      const response = await tallyingAPI.start(stats.election.id);
+      const response = await tallyingAPI.start(DEMO_ELECTION_ID);
       addLog('Tallying session created', 'success');
       addLog(`Session ready for trustee decryption`, 'info');
       addLog(`Response: ${JSON.stringify(response.data)}`, 'debug');
@@ -154,18 +152,13 @@ function TestingPanel() {
 
   // Step 4: Finalize Results
   const handleFinalize = async () => {
-    if (!stats?.election?.id) {
-      addLog('No election found.', 'error');
-      return;
-    }
-
     setActiveStep('finalize');
     updateStepStatus('finalize', STATUS.RUNNING);
     addLog('Finalizing tally and computing results...', 'info');
 
     try {
       addLog('Combining partial decryptions from trustees...', 'info');
-      const response = await tallyingAPI.finalize(stats.election.id);
+      const response = await tallyingAPI.finalize(DEMO_ELECTION_ID);
       addLog('Results computed successfully!', 'success');
       addLog(`Response: ${JSON.stringify(response.data)}`, 'debug');
       updateStepStatus('finalize', STATUS.SUCCESS);
@@ -180,18 +173,13 @@ function TestingPanel() {
 
   // Step 5: Publish to Blockchain
   const handlePublishBlockchain = async () => {
-    if (!stats?.election?.id) {
-      addLog('No election found.', 'error');
-      return;
-    }
-
     setActiveStep('blockchain');
     updateStepStatus('blockchain', STATUS.RUNNING);
     addLog('Publishing results to blockchain...', 'info');
 
     try {
       addLog('Creating immutable record on ledger...', 'info');
-      const response = await resultsAPI.publishToBlockchain(stats.election.id);
+      const response = await resultsAPI.publishToBlockchain(DEMO_ELECTION_ID);
       addLog('Results published to blockchain!', 'success');
       addLog(`Transaction: ${JSON.stringify(response.data)}`, 'debug');
       updateStepStatus('blockchain', STATUS.SUCCESS);

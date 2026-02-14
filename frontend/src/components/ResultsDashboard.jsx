@@ -3,6 +3,8 @@ import { resultsAPI, mockDataAPI } from '../services/api';
 import { BarChart2, RefreshCw, Box, Users, Trophy, Hash, CheckCircle, XCircle, Loader, Link, Search } from 'lucide-react';
 import './ResultsDashboard.css';
 
+const DEMO_ELECTION_ID = '00000000-0000-0000-0000-000000000001';
+
 function ResultsDashboard() {
   const [results, setResults] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -18,26 +20,13 @@ function ResultsDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const stats = await mockDataAPI.getElectionStats();
-      const electionId = stats.data.election?.id;
+      const resultData = await resultsAPI.getByElectionId(DEMO_ELECTION_ID);
+      setResults(resultData.data);
 
-      if (!electionId) {
-        setError('No election found. Start by creating votes in the Testing tab.');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const resultData = await resultsAPI.getByElectionId(electionId);
-        setResults(resultData.data);
-
-        const summaryData = await resultsAPI.getSummary(electionId);
-        setSummary(summaryData.data);
-      } catch (err) {
-        setError('No results yet. Complete the tallying workflow in the Testing tab.');
-      }
+      const summaryData = await resultsAPI.getSummary(DEMO_ELECTION_ID);
+      setSummary(summaryData.data);
     } catch (err) {
-      setError('Failed to load election data');
+      setError('No results yet. Complete the tallying workflow in the Testing tab.');
     }
     setLoading(false);
   };

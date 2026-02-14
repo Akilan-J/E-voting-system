@@ -73,6 +73,13 @@ def init_demo_data():
             )
             db.add(election)
             db.commit()
+        else:
+            now = datetime.utcnow()
+            if not election.start_time or not election.end_time or now < election.start_time or now > election.end_time:
+                election.start_time = now - timedelta(minutes=5)
+                election.end_time = now + timedelta(days=1)
+                election.status = "active"
+                db.commit()
 
         # 2. Ensure Demo Citizens exist (Aadhaar Sim)
         test_credentials = ["123456789012", "987654321098", "555566667777"]
