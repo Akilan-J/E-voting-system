@@ -1,398 +1,362 @@
-﻿# 🗳️ E-Voting System
-### Secure, Privacy-Preserving Electronic Voting with Homomorphic Encryption
+# E-Voting System
 
-![Docker](https://img.shields.io/badge/docker-ready-blue) ![Python](https://img.shields.io/badge/python-3.11-blue) ![React](https://img.shields.io/badge/react-18-blue)
+A privacy-preserving electronic voting platform that uses homomorphic encryption to tally votes without decrypting individual ballots, threshold cryptography so no single party can access results alone, and an immutable hash-chained ledger for auditability.
 
 ---
 
-## 🚀 Quick Start
+## Table of Contents
 
-### Prerequisites
-- Docker Desktop installed and running
-- 8GB RAM minimum
-- Ports free: 3000, 8000, 5432, 8545
+1. [Prerequisites](#prerequisites)
+2. [Installation and Setup](#installation-and-setup)
+3. [System Architecture](#system-architecture)
+4. [Running a Demo Election](#running-a-demo-election)
+5. [User Roles](#user-roles)
+6. [Cryptographic Design](#cryptographic-design)
+7. [API Endpoints](#api-endpoints)
+8. [Project Structure](#project-structure)
+9. [Testing](#testing)
+10. [Local Development](#local-development)
+11. [Troubleshooting](#troubleshooting)
 
-### Setup & Run
+---
+
+## Prerequisites
+
+- Docker Desktop (running)
+- Minimum 8 GB RAM
+- The following ports must be free: 3000, 8000, 5432, 8545
+
+---
+
+## Installation and Setup
 
 ```bash
-# Clone and navigate
 cd E-voting-system
-
-# Start all services
 docker-compose up -d
+```
 
-# Wait 30 seconds for database initialization
+Give it about 30 seconds for the database to initialize, then verify:
 
-# Verify all containers running
+```bash
 docker-compose ps
 ```
 
-**Access:** 
-http://localhost:3000
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend (Swagger) | http://localhost:8000/docs |
+| Health check | http://localhost:8000/health |
 
----
-
-## ⚡ Run Your First Election (2 minutes)
-
-### Testing Tab - Setup Phase
-1. **🔧 Setup Trustees** - Click & wait for success
-2. **🗳️ Generate 100 Mock Votes** - Click & wait 20 seconds (encryption takes time)
-3. **🔢 Generate 100 Mock Ballots** - Click & wait
-4. **📍 Tally Ballots** - Click to aggregate votes
-5. **✨ Start Tallying Process** - Click to initialize decryption
-
-### Trustees Tab - Decryption Phase
-6. Click **🔓 Decrypt** for 3 different trustees (any 3)
-   - Watch progress: 1/3 → 2/3 → 3/3 ✅
-
-### Testing Tab - Finalization
-7. **⛓️ Finalize Tally on Blockchain** - Click to complete
-
-### Results Tab - View Winner
-8. See vote distribution, winner, and blockchain verification! 🏆
-
----
-
-## 🏗️ System Architecture
-
-```
-┌─────────────┐      ┌─────────────┐      ┌──────────────┐
-│   React     │─────▶│   FastAPI   │─────▶│  PostgreSQL  │
-│  Frontend   │      │   Backend   │      │   Database   │
-│  :3000      │      │   :8000     │      │   :5432      │
-└─────────────┘      └─────────────┘      └──────────────┘
-                            │
-                            ▼
-                     ┌──────────────┐
-                     │   Ganache    │
-                     │  Blockchain  │
-                     │   :8545      │
-                     └──────────────┘
-```
-
-**Components:**
-- **Frontend** - React 18 with modern UI/UX
-- **Backend** - FastAPI with Paillier encryption
-- **Database** - PostgreSQL 15 for vote storage
-- **Blockchain** - Ganache for result immutability
-
----
-
-## 🔐 Security Features
-
-- **Homomorphic Encryption** - Votes remain encrypted during tallying (Paillier 2048-bit)
-- **Threshold Cryptography** - 3-of-5 trustees required (Shamir's Secret Sharing)
-- **Zero-Knowledge Proofs** - Verifiable decryption without revealing private keys
-- **Blockchain Verification** - Immutable result publication
-- **Merkle Trees** - Ballot integrity verification
-- **Audit Logging** - Complete operation tracking
-
----
-
-## 📡 API Reference
-
-**Base URL:** http://localhost:8000/api
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/tally/start` | POST | Start tallying process |
-| `/tally/partial-decrypt/{trustee_id}` | POST | Trustee decryption |
-| `/tally/finalize` | POST | Compute final results |
-| `/results/{election_id}` | GET | View results |
-| `/mock/generate-votes?count=100` | POST | Generate test votes |
-
-**Full API Docs:** http://localhost:8000/docs
-
----
-
-## 🛠️ Development
-
-### Environment Setup
+To tear everything down (including the database volume):
 
 ```bash
-# Frontend development
-cd frontend
-npm install
-npm start
-
-# Backend development
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-
-# Database migrations
-cd backend
-alembic upgrade head
-```
-
-### Useful Commands
-
-```bash
-# View logs
-docker-compose logs -f
-
-# Restart services
-docker-compose restart backend
-docker-compose restart frontend
-
-# Reset database
-curl -X POST "http://localhost:8000/api/mock/reset-database?confirm=true"
-
-# Stop all
-docker-compose down
-
-# Full cleanup (removes volumes)
 docker-compose down -v
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## System Architecture
 
-**"Generate Votes" shows "Action Failed"**
-- Normal! Wait 20 seconds for encryption to complete
-- Success message appears after processing
+The project is a four-service stack orchestrated by Docker Compose:
 
-**"Finalization Failed: Key Mismatch"**
-- Reset database and start fresh workflow
-- Don't repeat any step - each button clicked only once
-
-**"Decrypt" button disabled**
-- Complete Testing tab steps 1-5 first
-
-**No results showing**
-- Ensure 3 trustees decrypted
-- Click "Finalize Tally" in Testing tab
-
-**Containers won't start**
-```bash
-docker-compose down -v
-docker-compose up -d --build
+```
+React 18 (:3000)  --->  FastAPI (:8000)  --->  PostgreSQL 15 (:5432)
+                                          --->  Ganache (:8545)
 ```
 
-**Frontend won't compile**
-```bash
-docker-compose restart frontend
-docker logs evoting_frontend -f
-```
+- **Frontend** serves the voter, admin, trustee, auditor, and security-engineer interfaces. Role-based tab visibility is enforced at login.
+- **Backend** exposes REST endpoints for authentication, vote encryption, tallying, ledger management, verification, and operational audit. JWT-based auth with optional TOTP MFA.
+- **PostgreSQL** stores users, elections, encrypted votes, trustee shares, tallying sessions, partial decryptions, results, audit logs, incidents, and disputes.
+- **Ganache** acts as a local Ethereum node for publishing finalized election results on-chain.
 
 ---
 
-## 📂 Project Structure
+## Running a Demo Election
+
+The system ships with a built-in testing workflow. Open the frontend at http://localhost:3000 and log in as `admin`.
+
+### Phase 1 — Setup (Testing tab)
+1. **Setup Trustees** — generates 5 trustees and splits the election private key into 5 shares using Shamir's Secret Sharing.
+2. **Generate 100 Mock Votes** — creates 100 Paillier-encrypted ballots. Takes roughly 20 seconds due to 2048-bit encryption.
+3. **Generate 100 Mock Ballots** — registers the ballots in the database.
+4. **Tally Ballots** — aggregates all ciphertexts homomorphically (multiplies encrypted values to get encrypted sums).
+5. **Start Tallying Process** — marks the election as ready for trustee decryption.
+
+### Phase 2 — Decryption (Trustees tab)
+6. Click **Decrypt** on any 3 of the 5 trustees. Each one contributes a partial decryption using their key share. The UI shows progress (1/3, 2/3, 3/3).
+
+### Phase 3 — Finalization (Testing tab)
+7. **Finalize Tally on Blockchain** — reconstructs the plaintext result from the 3 partial decryptions and publishes it to Ganache.
+
+### Phase 4 — Results (Results tab)
+8. View the vote distribution per candidate, the declared winner, and the blockchain transaction hash.
+
+---
+
+## User Roles
+
+| Role | Credential | What they can access |
+|------|------------|---------------------|
+| Voter | voter1 through voter5 | Voter Access, Results, Ledger, Verification |
+| Admin | admin | All tabs |
+| Trustee | trustee | Trustees, Results, Ledger, Verification |
+| Auditor | auditor | Results, Ledger, Ops & Audit, Verification |
+| Security Engineer | security_engineer | Security Lab, Ops & Audit, Ledger, Verification |
+
+MFA (TOTP) can be enabled per voter from the Voter Access dashboard. See [docs/MFA_CODE_GUIDE.md](MFA_CODE_GUIDE.md) for details on generating codes.
+
+---
+
+## Cryptographic Design
+
+### Homomorphic encryption
+Votes are encrypted using the Paillier cryptosystem with 2048-bit keys. The additive homomorphic property allows the backend to compute E(v1 + v2 + ... + vn) = E(v1) * E(v2) * ... * E(vn) without decrypting any individual ballot. The frontend additionally performs client-side encryption with RSA-OAEP via the Web Crypto API before submitting to the backend.
+
+### Threshold decryption
+The election private key is split into 5 shares (Shamir's Secret Sharing, threshold 3). No single trustee holds the full key. Decryption requires at least 3 trustees to contribute partial results, which are combined server-side to reconstruct the plaintext tally.
+
+### Blind signatures
+Voter credential issuance uses an RSA blind-signature protocol. The authentication zone (Zone 1) knows who the voter is; the vote-casting zone (Zone 3) only sees an anonymous signed token. The issuer signs a blinded token it cannot read, and the voter unblinds it. This breaks the link between identity and ballot.
+
+### Immutable ledger
+Encrypted votes are appended to a hash-chained, Merkle-tree-backed ledger. Blocks go through a BFT consensus simulation (propose, approve x3, finalize) before they are committed. Merkle proofs let voters verify inclusion without revealing vote content.
+
+### Audit chain
+All system operations (credential issuance, vote submission, tally actions, incident reports) are logged in a tamper-evident hash chain where each entry contains the hash of the previous entry.
+
+---
+
+## API Endpoints
+
+Base URL: `http://localhost:8000`
+
+### Authentication
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /auth/login | POST | Authenticate and receive JWT |
+| /auth/mfa/setup | POST | Enable TOTP MFA |
+| /auth/mfa/verify | POST | Verify TOTP code |
+
+### Voting
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/voter/check-eligibility | POST | Check voter eligibility |
+| /api/voter/issue-credential | POST | Issue blind-signed credential |
+| /api/voter/cast-vote | POST | Submit encrypted vote with token |
+
+### Tallying
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/tally/start | POST | Begin tallying for an election |
+| /api/tally/partial-decrypt/{trustee_id} | POST | Trustee partial decryption |
+| /api/tally/finalize | POST | Combine partials, publish result |
+| /api/tally/status/{election_id} | GET | Tallying progress |
+
+### Ledger
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/ledger/submit | POST | Submit vote entry |
+| /api/ledger/propose | POST | Propose new block |
+| /api/ledger/approve | POST | Approve proposed block |
+| /api/ledger/finalize | POST | Finalize block after quorum |
+| /api/ledger/blocks | GET | List committed blocks |
+| /api/ledger/proof/{entry_hash} | GET | Merkle inclusion proof |
+| /api/ledger/verify-chain | GET | Validate full chain integrity |
+
+### Verification and Ops
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/verify/receipt | POST | Verify voter receipt |
+| /api/verify/zk-proof | POST | Validate ZK proof bundle |
+| /api/security/replay-ledger | POST | Replay and verify ledger |
+| /api/security/simulate | POST | Run threat simulation |
+| /api/ops/dashboard/{election_id} | GET | Transparency metrics |
+| /api/ops/evidence/{election_id} | GET | Download evidence package |
+| /api/ops/incidents | GET/POST | Incident management |
+| /api/ops/disputes | GET/POST | Dispute workflow |
+| /api/ops/compliance-report/{election_id} | GET | Compliance report |
+
+### Mock / Testing
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/mock/setup-trustees | POST | Initialize trustee shares |
+| /api/mock/generate-votes?count=N | POST | Generate encrypted test votes |
+| /api/mock/reset-database?confirm=true | POST | Wipe and reinitialize database |
+
+Interactive Swagger documentation is available at http://localhost:8000/docs.
+
+---
+
+## Project Structure
 
 ```
 E-voting-system/
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # React components
-│   │   │   ├── TestingPanel.jsx
-│   │   │   ├── TrusteePanel.jsx
-│   │   │   └── ResultsDashboard.jsx
-│   │   ├── services/        # API client
-│   │   └── App.js
-│   └── package.json
-├── backend/
-│   ├── app/
-│   │   ├── routers/         # API endpoints
-│   │   ├── services/        # Business logic
-│   │   │   ├── encryption.py
-│   │   │   ├── tallying.py
-│   │   │   └── threshold_crypto.py
-│   │   ├── models/          # Database models
-│   │   └── main.py
-│   └── requirements.txt
-├── docker-compose.yml
-└── README.md
+  docker-compose.yml
+  pytest.ini
+  start.ps1                        # PowerShell launcher
+  reset_demo.ps1                   # Demo reset script
+
+  frontend/
+    src/
+      App.js                       # Root component, routing, role-based tabs
+      components/
+        VoterAccess.js             # Credential issuance, ballot submission
+        TestingPanel.jsx           # Admin testing workflow
+        TrusteePanel.jsx           # Trustee decryption interface
+        ResultsDashboard.jsx       # Election result charts
+        LedgerExplorer.jsx         # Block browser
+        VerificationPortal.jsx     # Receipt and ZK proof verification
+        OpsDashboard.js            # Incident/dispute/compliance ops
+        SecurityLab.jsx            # Threat simulation interface
+        CryptoVisualizer.jsx       # Cryptographic flow visualization
+        TallyAudit.jsx             # Tally audit trail
+      services/
+        webauthn.js                # WebAuthn helpers
+    package.json
+
+  backend/
+    app/
+      main.py                     # FastAPI app, lifespan, router registration
+      routers/
+        auth.py                   # Login, JWT, MFA
+        voter.py                  # Eligibility, credential, vote cast
+        tallying.py               # Tally start, partial decrypt, finalize
+        trustees.py               # Trustee management
+        results.py                # Result retrieval
+        ledger.py                 # Ledger CRUD and consensus
+        ops.py                    # Incidents, disputes, compliance, evidence
+        verification.py           # Receipt and ZK proof verification
+        security.py               # Threat sim, anomaly detection, replay
+        mock_data.py              # Test data generation
+        biometric.py              # WebAuthn biometric endpoints (optional)
+      services/
+        encryption.py             # Paillier homomorphic encryption
+        tallying.py               # Tallying business logic
+        threshold_crypto.py       # Shamir's Secret Sharing
+        ledger_service.py         # Ledger core (Merkle tree, BFT, chain verify)
+        monitoring.py             # System monitoring
+      models/                     # SQLAlchemy and Pydantic models
+    tests/
+      test_epic4.py               # Paillier, threshold, aggregation (19 tests)
+      test_epic4_endpoints.py     # Tally API integration (1 test)
+      test_security_epic_manual.py # Full security flow (1 test)
+      test_ledger.py              # Ledger hashing, Merkle, genesis (8 tests)
+      test_epic3_enhancements.py  # Block validation, signatures (14 tests)
+      test_epic5_user_stories.py  # Epic 5 endpoints (11 tests)
+      test_ops_stories.py         # Ops workflows (4 tests)
+      test_verification_stories.py # Verification endpoints (4 tests)
+      test_all_implemented_features.py  # Cross-epic (41 tests)
+    run_all_tests.py              # Master test runner
+    requirements.txt
+
+  database/
+    init.sql                      # Schema initialization
+
+  blockchain/
+    contracts/                    # Solidity contracts (if applicable)
+
+  artifacts/                      # Signed reports (anomaly, compliance, etc.)
+
+  scripts/
+    verify_integration.py         # Integration verification helper
+
+  docs/
+    EPIC3_README.md               # Ledger module documentation
+    EPIC4_README.md               # Tallying and security architecture
+    EPIC5_README.md               # Verification and audit ops
+    TESTING_WORKFLOW.md           # Manual QA walkthrough
+    USAGE_GUIDE.md                # End-user usage guide
+    TEST_COVERAGE_REPORT.md       # Test suite breakdown
+    MFA_CODE_GUIDE.md             # MFA setup instructions
 ```
 
 ---
 
-## 🔬 Technical Details
+## Testing
 
-### Cryptographic Implementation
+The project has 9 test files with 103 tests total. All tests pass on the current codebase.
 
-**Encryption:** Paillier homomorphic cryptosystem
-```python
-# Votes are encrypted: E(v)
-# Tallying: E(v1) × E(v2) × ... = E(v1 + v2 + ...)
-# Decrypt once to get total
+```bash
+cd backend
+python run_all_tests.py
 ```
 
-**Threshold Scheme:** 3-of-5 Shamir's Secret Sharing
-```python
-# Private key split into 5 shares
-# Any 3 shares can reconstruct key
-# No single trustee can decrypt alone
-```
+The runner executes each file individually and reports results grouped by epic:
 
-**Zero-Knowledge Proofs:** Trustees prove correct decryption without revealing shares
+| Suite | Tests | Covers |
+|-------|-------|--------|
+| test_epic4.py | 19 | Paillier encrypt/decrypt, homomorphic aggregation, Shamir split/reconstruct |
+| test_epic3_enhancements.py | 14 | Config loading, RSA signatures, block structure validation |
+| test_all_implemented_features.py | 41 | Cross-epic: auth, ballots, ledger, encryption, verification |
+| test_epic5_user_stories.py | 11 | Receipt, ZK proof, replay, dashboard, incidents, disputes |
+| test_ledger.py | 8 | Hashing, Merkle tree, genesis block, chain linkage |
+| test_ops_stories.py | 4 | Evidence, threat sim, incident lifecycle, anomalies |
+| test_verification_stories.py | 4 | Receipt proof, ZK validation, chain replay, stats |
+| test_epic4_endpoints.py | 1 | Tally REST API integration |
+| test_security_epic_manual.py | 1 | Login, eligibility, blind credential, anonymous vote |
 
-### Database Schema
+To run a specific file:
 
-- **elections** - Election metadata
-- **encrypted_votes** - Homomorphically encrypted votes
-- **trustees** - Trustee info and key shares
-- **partial_decryptions** - Individual trustee decryptions
-- **tallying_sessions** - Tallying state tracking
-- **results** - Final decrypted results
-
----
-
-## 🎯 Key Workflow
-
-```
-1. Setup → 2. Vote Encryption → 3. Aggregation → 4. Threshold Decryption → 5. Result Publication
-
-[Trustees Setup]  →  [100 Votes Generated]  →  [Homomorphic Tally]
-                                                         ↓
-[Blockchain Publish]  ←  [Final Results]  ←  [3/5 Trustees Decrypt]
+```bash
+pytest tests/test_epic4.py -v
 ```
 
 ---
 
-## ⚠️ Important Notes
+## Local Development
 
-- **Demo System** - Not production-ready
-- Each workflow step should be clicked **only once**
-- Vote generation takes **~20 seconds** due to encryption
-- Need **exactly 3 trustees** to decrypt (can't use 2 or 4)
-- Always reset database between test runs for clean state
+### Frontend (without Docker)
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### Backend (without Docker)
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+The backend expects a running PostgreSQL instance. Connection parameters are read from environment variables (see `.env.example`).
+
+### Common Docker commands
+
+```bash
+docker-compose up -d              # start all services
+docker-compose down                # stop all services
+docker-compose down -v             # stop and delete volumes
+docker-compose logs -f             # stream logs
+docker-compose restart backend     # restart one service
+docker-compose up -d --build       # rebuild images
+```
 
 ---
 
-## 📊 Performance
+## Troubleshooting
 
-- Vote encryption: ~200ms per vote
-- 100 votes: ~20 seconds
-- Homomorphic aggregation: <2 seconds
-- Partial decryption per trustee: <1 second
-- Finalization: <3 seconds
-
----
-
-## 🚧 Production Considerations
-
-For real elections, implement:
-- ✅ Real cryptographic key management (HSM)
-- ✅ Trustee authentication & authorization
-- ✅ Production blockchain (Ethereum mainnet/L2)
-- ✅ Voter identity verification
-- ✅ Rate limiting & DDoS protection
-- ✅ Audit logging to external system
-- ✅ Backup & disaster recovery
-- ✅ Security penetration testing
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| "Action Failed" on vote generation | Encryption takes ~20s for 100 ballots | Wait for it to finish; do not click again |
+| Key mismatch on finalize | Steps were run out of order or repeated | Reset the database and redo steps 1-7 in order |
+| Decrypt button greyed out | Tallying process not started | Complete all 5 setup steps first |
+| No results after finalize | Fewer than 3 trustees decrypted | Decrypt with at least 3 trustees, then finalize |
+| Containers fail to start | Port conflict or stale volumes | `docker-compose down -v && docker-compose up -d --build` |
+| "mfa_pending" shown as role | Stale browser localStorage | Clear localStorage for localhost:3000 and refresh |
 
 ---
 
-## 📚 Additional Resources
+## Further Documentation
 
-- **API Docs:** http://localhost:8000/docs
-- **Health Check:** http://localhost:8000/health
-- **Paillier Cryptosystem:** [Wikipedia](https://en.wikipedia.org/wiki/Paillier_cryptosystem)
-- **Shamir's Secret Sharing:** [Wikipedia](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing)
-
----
-
-## 🤝 Contributing
-
-This is a demonstration project for educational purposes.
+- [EPIC3_README.md](EPIC3_README.md) — Immutable ledger: BFT consensus, Merkle proofs, chain verification
+- [EPIC4_README.md](EPIC4_README.md) — Cryptographic pipeline: Paillier, threshold decryption, blind signatures, security zones
+- [EPIC5_README.md](EPIC5_README.md) — Verification and audit: receipt verification, anomaly detection, incident response
+- [TESTING_WORKFLOW.md](TESTING_WORKFLOW.md) — Manual QA steps for login, MFA, and voting flows
+- [USAGE_GUIDE.md](USAGE_GUIDE.md) — Step-by-step election walkthrough
+- [TEST_COVERAGE_REPORT.md](TEST_COVERAGE_REPORT.md) — Full test suite breakdown
+- [MFA_CODE_GUIDE.md](MFA_CODE_GUIDE.md) — How to get TOTP codes for MFA login
 
 ---
 
-## 🔀 GitHub Workflow
-
-This guide outlines the Git workflow for contributing to this project.
-
-### 1. Sync with the main branch
-Before starting any new work, ensure your main branch is up-to-date with the remote repository.
-
-```bash
-git switch main
-git pull origin main
-```
-
-### 2. Create or Switch to a Feature Branch
-Create a new branch for your feature or bug fix. This isolates your changes from the main branch.
-
-```bash
-# Switch to your existing feature branch
-git switch <your-feature-branch>
-
-# Or create a new feature branch
-git switch -c <your-feature-branch>
-```
-
-### 3. Sync your Feature Branch with main
-Periodically, you should update your feature branch with the latest changes from main.
-
-```bash
-git pull origin main
-```
-
-This helps to avoid large merge conflicts later.
-
-### 4. Develop and Commit
-Make your code changes, then stage and commit them.
-
-```bash
-# Create or modify files
-touch new_file.py
-
-# Stage your changes
-git add .
-
-# Commit your changes with a descriptive message
-git commit -m "Your descriptive commit message"
-```
-
-### 5. Push your Feature Branch
-Push your feature branch to the remote repository. This backs up your work and prepares it for a pull request.
-
-```bash
-git push origin <your-feature-branch>
-```
-
-### 6. Merge your changes
-Once your feature is complete and reviewed, merge it into the main branch.
-
-```bash
-# Switch to the main branch
-git switch main
-git pull origin main
-
-# Merge your feature branch
-git merge <your-feature-branch>
-```
-
-If there are merge conflicts, resolve them, and then commit the changes.
-
-```bash
-# After resolving conflicts
-git add .
-git commit
-```
-
-### 7. Push the Merged main Branch
-Finally, push the updated main branch to the remote repository.
-
-```bash
-git push origin main
-```
-
-### 8. (Optional) Continue Working on Your Feature Branch
-If you want to continue working on your feature branch after the merge, switch back to it and sync with the updated main.
-
-```bash
-# Switch back to your feature branch
-git switch <your-feature-branch>
-
-# Sync with the merged main branch
-git pull origin main
-```
-
-### Contributing Guidelines
-Please follow the workflow above when contributing to this project. Always ensure your feature branch is up-to-date with main before submitting a pull request.
-
----
-
-**Status:** ✅ Fully Functional | **Version:** 1.0.0 | **Last Updated:** January 2026
+This is a demonstration system built for academic evaluation. It is not intended for production use without significant hardening (HSM key management, physical trustee separation, network-layer encryption, voter identity verification, external audit infrastructure).

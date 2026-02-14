@@ -1,0 +1,15 @@
+{
+  "election_id": "35c061bd-fac2-4861-8c3e-0f02104c1331",
+  "generated_at": "2026-02-13T08:14:59.254284",
+  "total_events": 1,
+  "timeline_hash": "fdb27155f094bbdd8c60cfc0850fda2ce80f8490b3937b1900750766a71ac442",
+  "events": [
+    {
+      "timestamp": "2026-02-13T08:14:59.250582",
+      "subsystem": "ledger",
+      "event_type": "test_event",
+      "reference_id": "2441",
+      "details_hash": "239f59ed55e737c77147cf55ad0c1b030b6d7ee748a7426952f9b852d5a935e5"
+    }
+  ]
+}

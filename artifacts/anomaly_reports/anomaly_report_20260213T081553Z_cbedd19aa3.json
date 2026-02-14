@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-02-13T08:15:53.049410",
+  "window_minutes": 60,
+  "anomalies": [
+    {
+      "id": "ANOM-VOTE-1770970553",
+      "type": "Voting Spike",
+      "timestamp": "2026-02-13T08:15:53.043653",
+      "severity": "medium",
+      "details": "133 votes in 5m vs baseline 20",
+      "block_range": "0-0",
+      "correlation_id": "CORR-bf4c6f94-a79d-4119-9789-31b38c1a9fb4",
+      "evidence_hash": "068786bf2cb1a2d52710f6eb39aa4d811044cd1ccffe40a8e05a09307445f49e"
+    }
+  ]
+}

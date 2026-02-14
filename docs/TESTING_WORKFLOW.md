@@ -1,160 +1,104 @@
-# E-Voting System — Testing Workflow Guide
+# Testing Workflow Guide
 
-> This document provides step-by-step instructions to test the complete voter login, 2FA/MFA, and voting flow.
+Step-by-step instructions to test the voter login, MFA, and voting flow.
 
 ---
 
 ## Prerequisites
 
-1. All Docker containers are running:
-   ```powershell
-   docker-compose up -d
-   ```
-2. Frontend is accessible at **http://localhost:3000**
-3. Backend is accessible at **http://localhost:8000**
-4. Backend health check returns `healthy`:
-   ```
-   GET http://localhost:8000/health
-   ```
+1. All Docker containers running: `docker-compose up -d`
+2. Frontend at http://localhost:3000
+3. Backend at http://localhost:8000
+4. Health check returns healthy: GET http://localhost:8000/health
 
 ---
 
 ## Test 1: Basic Voter Login (No MFA)
 
-### Steps
+1. Open http://localhost:3000
+2. Select Role as Voter
+3. Enter credential: `voter1` (valid credentials: voter1 through voter5)
+4. Click Login
 
-1. Open **http://localhost:3000** in your browser.
-2. On the login screen, select **Role → Voter**.
-3. Enter credential: `voter1` (valid: voter1–voter5).
-4. Click **Login**.
-
-### Expected Results
-
-- ✅ You are logged in immediately (no MFA prompt).
-- ✅ Role shown in the top bar: `voter`.
-- ✅ Available tabs: **Voter Access**, **Results**, **Ledger**, **Verification**.
-- ✅ No "mfa_pending" should appear anywhere.
+Expected: Logged in immediately with no MFA prompt. Role shows as "voter" in the top bar. Available tabs: Voter Access, Results, Ledger, Verification.
 
 ---
 
-## Test 2: Voter Access Dashboard (No MFA)
+## Test 2: Voter Access Dashboard
 
-### Steps
+1. After logging in as voter1, click the Voter Access tab
+2. Dashboard should load directly without a second login
 
-1. After logging in as `voter1` (Test 1), click the **👤 Voter Access** tab.
-2. You should see the **Voter Access & Credentials** dashboard directly (no second login required).
-
-### Expected Results
-
-- ✅ Dashboard shows "Logged in as:" and Security Settings, Election Actions.
-- ✅ No login screen appears — the existing auth is reused.
-- ✅ "Enable 2FA Protection" button is visible in Security Settings.
+Expected: Shows "Logged in as" with Security Settings and Election Actions sections. No separate login screen appears. The "Enable 2FA Protection" button is visible.
 
 ---
 
-## Test 3: Enable 2FA (MFA Setup)
+## Test 3: Enable 2FA
 
-### Steps
+1. In the Voter Access dashboard, click Enable 2FA Protection
+2. A secret key and provisioning URI will appear
+3. Copy the secret key
+4. Enter the 6-digit OTP from your authenticator app (or generate via CLI, see below)
+5. Click Activate 2FA
 
-1. In the **Voter Access** dashboard, click **Enable 2FA Protection**.
-2. A secret key and provisioning URI will appear.
-3. **Copy the secret key** (e.g., `ABC123XYZ...`) — you'll need this for an authenticator app or command-line OTP generation.
-4. Enter the 6-digit OTP code from your authenticator app (or generate via CLI: see below).
-5. Click **Activate 2FA**.
-
-#### Generating OTP via CLI (if no authenticator app)
-
-```powershell
+To generate an OTP without an authenticator app:
+```bash
 docker exec evoting_backend python -c "import pyotp; print(pyotp.TOTP('YOUR_SECRET_HERE').now())"
 ```
 
-Replace `YOUR_SECRET_HERE` with the secret displayed in the UI.
-
-### Expected Results
-
-- ✅ Message: "MFA Setup Complete: MFA Enabled".
-- ✅ You remain on the dashboard (not kicked out).
-- ✅ A new auth token is issued automatically — no re-login needed.
-- ✅ Activity log shows: "MFA Setup Complete: MFA Enabled".
+Expected: Message says "MFA Setup Complete: MFA Enabled". You remain on the dashboard. A new token is issued automatically.
 
 ---
 
-## Test 4: Re-Login with 2FA (MFA Login Flow)
+## Test 4: Re-Login with 2FA
 
-### Steps
+1. Click Logout
+2. Select Voter, enter `voter1`, click Login
+3. An OTP verification screen should appear
+4. Enter the 6-digit code from your authenticator or CLI
+5. Click Verify
 
-1. Click **Logout** (top right in the App header) to log out completely.
-2. On the login screen, select **Role → Voter**, enter `voter1`, click **Login**.
-3. A **Two-Factor Authentication** screen should appear asking for the 6-digit code.
-4. Enter the OTP code from your authenticator (or generate via CLI as above — use the same secret from Test 3).
-5. Click **Verify**.
+Expected: After entering credentials, you see the OTP screen (not the main app). After a valid OTP, you are logged in with role "voter" and all tabs are available.
 
-### Expected Results
+If it fails:
 
-- ✅ After entering credentials, you see the OTP verification screen (NOT the main app with "mfa_pending").
-- ✅ After entering a valid OTP, you are logged in with role: `voter`.
-- ✅ All voter tabs are available.
-- ✅ No "mfa_pending" appears in the UI.
-
-### What to Check if It Fails
-
-| Symptom | Cause | Fix |
+| Problem | Cause | Fix |
 |---------|-------|-----|
-| Shows "mfa_pending" as role | Old localStorage data | Clear browser localStorage and retry |
-| "Invalid OTP" error | OTP expired (30-sec window) | Generate a fresh OTP and try immediately |
-| Stuck on login screen | Backend not reachable | Check `docker-compose ps`, restart if needed |
+| Shows "mfa_pending" as role | Stale localStorage data | Clear browser localStorage and retry |
+| "Invalid OTP" error | OTP expired (30-second window) | Generate a fresh OTP immediately |
+| Stuck on login screen | Backend unreachable | Check docker-compose ps, restart if needed |
 
 ---
 
-## Test 5: Voter Access with 2FA Enabled
+## Test 5: Voter Access with 2FA Active
 
-### Steps
+1. After MFA login, click Voter Access tab
+2. Dashboard should load directly
 
-1. After MFA login (Test 4), click **👤 Voter Access** tab.
-2. Dashboard should load directly.
-
-### Expected Results
-
-- ✅ Dashboard loads immediately — no second login needed.
-- ✅ Security Settings shows MFA is already active.
+Expected: No second login needed. Security Settings shows MFA is already active.
 
 ---
 
 ## Test 6: Full Voting Flow
 
-### Steps
+1. Log in as voter1 (with or without MFA depending on state)
+2. Go to Voter Access tab
+3. Click Check Eligibility - confirm "Eligible" badge appears
+4. Click Get Blind Credential - credential issued message appears
+5. In the Voting Booth section, select a candidate (e.g., Alice Johnson)
+6. Click Review and Encrypt
+7. Review the selection, then click Confirm and Submit
 
-1. Log in as `voter1` (with or without MFA depending on state).
-2. Go to **👤 Voter Access** tab.
-3. Click **Check Eligibility** → confirm "Eligible" badge appears.
-4. Click **Get Blind Credential** → credential issued message appears.
-5. In the **Voting Booth** section, select a candidate (e.g., Alice Johnson).
-6. Click **🔎 Review & Encrypt**.
-7. Review the selection, then click **🔒 Confirm and Submit**.
-
-### Expected Results
-
-- ✅ Eligibility check returns "Eligible" with a green badge.
-- ✅ Blind credential is issued (signature is displayed).
-- ✅ Candidates are displayed in the voting booth.
-- ✅ After submitting, the "Vote Submitted" confirmation appears with:
-  - Receipt hash
-  - Timestamp
-- ✅ Activity log records all steps.
+Expected: Eligibility check returns "Eligible". Blind credential is issued with a signature displayed. After submitting, a "Vote Submitted" confirmation appears with a receipt hash and timestamp.
 
 ---
 
 ## Test 7: Admin Login
 
-### Steps
+1. Log out from voter account
+2. Select Admin, enter credential: `admin`, click Login
 
-1. Log out from voter account.
-2. Select **Role → Admin**, enter credential: `admin`, click **Login**.
-
-### Expected Results
-
-- ✅ Logged in as `admin`.
-- ✅ All tabs visible: Results, Ledger, Trustees, Testing, Ops & Audit, Verification, Security Lab.
+Expected: Logged in as admin. All tabs visible: Results, Ledger, Trustees, Testing, Ops and Audit, Verification, Security Lab.
 
 ---
 
@@ -162,51 +106,43 @@ Replace `YOUR_SECRET_HERE` with the secret displayed in the UI.
 
 | Role | Credential | Expected Tabs |
 |------|------------|---------------|
-| Trustee | `trustee` | Trustees, Results, Ledger, Verification |
-| Auditor | `auditor` | Results, Ledger, Ops & Audit, Verification |
-| Security Engineer | `security_engineer` | Security Lab, Ops & Audit, Ledger, Verification |
+| Trustee | trustee | Trustees, Results, Ledger, Verification |
+| Auditor | auditor | Results, Ledger, Ops and Audit, Verification |
+| Security Engineer | security_engineer | Security Lab, Ops and Audit, Ledger, Verification |
 
 ---
 
 ## Troubleshooting
 
-### Reset MFA for All Voters
-If MFA is causing issues during testing, reset it:
-```powershell
+### Reset MFA for all voters
+```bash
 docker exec evoting_postgres psql -U admin -d evoting -c "UPDATE users SET mfa_enabled = false, mfa_secret = NULL WHERE role = 'voter';"
 ```
 
-### Clear Browser State
-If you see stale "mfa_pending" roles:
-1. Open browser DevTools → Application → Local Storage → http://localhost:3000
-2. Delete `authRole` and `authToken` entries
-3. Refresh the page
+### Clear browser state
+Open DevTools, go to Application, Local Storage, http://localhost:3000. Delete `authRole` and `authToken` entries. Refresh the page.
 
-### Restart All Containers
-```powershell
+### Restart containers
+```bash
 docker-compose down
 docker-compose up -d
 ```
 
-### Check Backend Logs
-```powershell
+### Check logs
+```bash
 docker logs evoting_backend --tail 50
-```
-
-### Check Frontend Logs
-```powershell
 docker logs evoting_frontend --tail 50
 ```
 
 ---
 
-## Quick Verification Checklist
+## Verification Checklist
 
-- [ ] voter1 can log in without MFA (fresh state)
-- [ ] Voter Access tab loads directly after login (no double-login)
-- [ ] 2FA can be enabled from Voter Access dashboard
-- [ ] After enabling 2FA, re-login shows OTP screen (not mfa_pending)
-- [ ] Valid OTP completes login with role: voter
-- [ ] Full voting flow works (eligibility → credential → vote → receipt)
-- [ ] Admin, trustee, auditor, security_engineer logins work
-- [ ] Logout fully clears session
+- voter1 can log in without MFA (fresh state)
+- Voter Access tab loads directly after login
+- 2FA can be enabled from Voter Access dashboard
+- After enabling 2FA, re-login shows OTP screen
+- Valid OTP completes login with role: voter
+- Full voting flow works (eligibility, credential, vote, receipt)
+- Admin, trustee, auditor, security_engineer logins work
+- Logout fully clears session
