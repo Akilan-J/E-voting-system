@@ -57,16 +57,30 @@ def test_zk_proof_verification():
     finally:
         db.close()
 
-    proof_bundle = {"a": [1, 2], "b": [[3, 4], [5, 6]], "c": [7, 8]}
-    
+    # Build a valid proof bundle matching what the endpoint expects.
+    # The endpoint checks: election_id, verification_hash, ledger_root, proof_hash
+    # With no ledger entries, merkle_root defaults to "0"*64
+    ledger_root = "0" * 64
+    import hashlib
+    proof_hash = hashlib.sha256(
+        f"{election_id}|hash123|{ledger_root}".encode()
+    ).hexdigest()
+
+    proof_bundle = {
+        "election_id": election_id,
+        "verification_hash": "hash123",
+        "ledger_root": ledger_root,
+        "proof_hash": proof_hash,
+    }
+
     response = client.post("/api/verify/zk-proof", json={
         "election_id": election_id,
         "proof_bundle": proof_bundle
     })
-    
+
     assert response.status_code == 200
     data = response.json()
-    assert data["is_valid"] is True 
+    assert data["is_valid"] is True
     assert "evidence_hash" in data
 
 # US-64: Ledger Replay

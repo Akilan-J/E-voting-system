@@ -1,4 +1,4 @@
-# E-Voting System - Usage Guide
+# Usage Guide
 
 A step-by-step guide to start and use the e-voting system.
 
@@ -9,19 +9,14 @@ A step-by-step guide to start and use the e-voting system.
 ### Prerequisites
 - Docker Desktop installed and running
 - 8GB RAM minimum
-- These ports must be free: 3000, 8000, 5432, 6379, 8545
+- Ports must be free: 3000, 8000, 5432, 6379, 8545
 
 ### Start the System
 
 ```bash
-# Navigate to project folder
 cd E-voting-system
-
-# Start all containers
 docker-compose up -d
-
 # Wait 30 seconds for initialization
-# Check all containers are running
 docker-compose ps
 ```
 
@@ -31,109 +26,68 @@ docker-compose ps
 |---------|-----|----------|
 | Frontend | http://localhost:3000 | React app loads |
 | Backend | http://localhost:8000/docs | API docs page |
-| Health | http://localhost:8000/health | `{"status":"healthy"}` |
+| Health | http://localhost:8000/health | {"status":"healthy"} |
 
 ---
 
 ## Running an Election
 
 ### Step 1: Setup Trustees
-1. Open http://localhost:3000
-2. Go to **Testing** tab
-3. Click **"Setup Trustees"**
-4. Wait for success message
+Open http://localhost:3000, go to the Testing tab, click "Setup Trustees". Wait for the success message.
 
 ### Step 2: Generate Test Votes
-1. Click **"Generate 100 Mock Votes"**
-2. Wait 20 seconds (encryption takes time)
-3. Success message appears
+Click "Generate 100 Mock Votes". Wait about 20 seconds (encryption is slow with 2048-bit keys). Success message appears when done.
 
 ### Step 3: Generate Ballots
-1. Click **"Generate 100 Mock Ballots"**
-2. Wait for success
+Click "Generate 100 Mock Ballots". Wait for success.
 
 ### Step 4: Aggregate Votes
-1. Click **"Tally Ballots"**
-2. Votes are aggregated using homomorphic encryption
+Click "Tally Ballots". Votes are aggregated using homomorphic encryption.
 
 ### Step 5: Start Tallying
-1. Click **"Start Tallying Process"**
-2. This prepares for trustee decryption
+Click "Start Tallying Process". This prepares the data for trustee decryption.
 
 ### Step 6: Trustee Decryption
-1. Go to **Trustees** tab
-2. Click **"Decrypt"** for any 3 trustees
-3. Each click does a partial decryption
-4. Watch progress: 1/3 → 2/3 → 3/3
-5. (Optional) Click **"Show Cryptographic Process Visualization"** at the bottom to see the workflow in detail
+Go to the Trustees tab. Click "Decrypt" for any 3 of the 5 trustees. Each click performs a partial decryption. Progress: 1/3, 2/3, 3/3. You can optionally click "Show Cryptographic Process Visualization" at the bottom to see the workflow in detail.
 
 ### Step 7: Finalize Results
-1. Return to **Testing** tab
-2. Click **"Finalize Tally on Blockchain"**
-3. Results are computed and published
+Return to the Testing tab. Click "Finalize Tally on Blockchain". Results are computed and published.
 
 ### Step 8: View Results
-1. Go to **Results** tab
-2. See vote distribution and winner
-3. Blockchain transaction hash shown
+Go to the Results tab. See vote distribution, winner, and blockchain transaction hash.
 
 ---
 
 ## Common Commands
 
-### Docker Commands
+### Docker
 ```bash
-# Start all services
-docker-compose up -d
-
-# Stop all services
-docker-compose down
-
-# View logs
-docker-compose logs -f
-
-# Restart a service
-docker-compose restart backend
-docker-compose restart frontend
-
-# Full reset (deletes database)
-docker-compose down -v
-docker-compose up -d
+docker-compose up -d              # Start all services
+docker-compose down                # Stop all services
+docker-compose down -v             # Full cleanup (removes database)
+docker-compose logs -f             # View logs
+docker-compose restart backend     # Restart a single service
 ```
 
 ### Reset Database
 ```bash
 curl -X POST "http://localhost:8000/api/mock/reset-database?confirm=true"
 ```
-
-Or click **"Reset Database"** in the Testing tab.
+Or click "Reset Database" in the Testing tab.
 
 ---
 
 ## Troubleshooting
 
-### "Action Failed" on Generate Votes
-- Wait 20 seconds - encryption is slow
-- Don't click multiple times
+**"Action Failed" on Generate Votes** - Wait 20 seconds. Encryption takes time. Do not click multiple times.
 
-### "Key Mismatch" Error
-- Reset the database
-- Start workflow from Step 1
-- Click each button only once
+**"Key Mismatch" error** - Reset the database and start from Step 1. Click each button only once.
 
-### "Decrypt" Button Disabled
-- Complete Steps 1-5 first
-- Make sure tallying started
+**"Decrypt" button disabled** - Complete Steps 1-5 first.
 
-### No Results Showing
-- Ensure 3 trustees decrypted
-- Click "Finalize Tally"
+**No results showing** - Make sure 3 trustees have decrypted, then click "Finalize Tally".
 
-### Containers Not Starting
-```bash
-docker-compose down -v
-docker-compose up -d --build
-```
+**Containers not starting** - Run `docker-compose down -v` then `docker-compose up -d --build`.
 
 ---
 
@@ -141,27 +95,19 @@ docker-compose up -d --build
 
 ### Mock Data
 ```bash
-# Generate votes
 curl -X POST "http://localhost:8000/api/mock/generate-votes?count=100"
-
-# Setup trustees
 curl -X POST "http://localhost:8000/api/mock/setup-trustees"
-
-# Reset database
 curl -X POST "http://localhost:8000/api/mock/reset-database?confirm=true"
 ```
 
 ### Tallying
 ```bash
-# Start tallying
 curl -X POST "http://localhost:8000/api/tally/start" \
   -H "Content-Type: application/json" \
   -d '{"election_id": "YOUR_ELECTION_ID"}'
 
-# Partial decrypt
 curl -X POST "http://localhost:8000/api/tally/partial-decrypt/{trustee_id}?election_id={election_id}"
 
-# Finalize
 curl -X POST "http://localhost:8000/api/tally/finalize" \
   -H "Content-Type: application/json" \
   -d '{"election_id": "YOUR_ELECTION_ID"}'
@@ -169,7 +115,6 @@ curl -X POST "http://localhost:8000/api/tally/finalize" \
 
 ### Results
 ```bash
-# Get results
 curl "http://localhost:8000/api/results/{election_id}"
 ```
 
@@ -208,5 +153,7 @@ uvicorn app.main:app --reload
 ### Running Tests
 ```bash
 cd backend
-pytest tests/ -v
+python run_all_tests.py
+# Or individually:
+pytest tests/test_epic4.py -v
 ```
