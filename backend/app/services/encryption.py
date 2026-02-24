@@ -64,6 +64,8 @@ class HomomorphicEncryptionService:
     def load_private_key(self, private_key_str: str):
         """Load private key from string"""
         self.private_key = self._deserialize_private_key(private_key_str)
+        # Also set public key from private key (Paillier private key contains public key)
+        self.public_key = self.private_key.public_key
         logger.info("Private key loaded")
     
     def encrypt_vote(self, candidate_id: int, num_candidates: int) -> str:
