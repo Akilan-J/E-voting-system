@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link, Box, FileText, CheckCircle, AlertTriangle, RefreshCw, ClipboardList, AlertCircle, Lightbulb } from 'lucide-react';
 import './LedgerExplorer.css';
 
 function LedgerExplorer() {
   const [blocks, setBlocks] = useState([]);
   const [chainStatus, setChainStatus] = useState(null);
+  const [consensusHealth, setConsensusHealth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  // Merkle proof lookup
+  const [proofInput, setProofInput] = useState('');
+  const [proofResult, setProofResult] = useState(null);
+  const [proofLoading, setProofLoading] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -18,7 +22,7 @@ function LedgerExplorer() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch blocks
+      // Fetch committed blocks
       const blocksRes = await fetch('/api/ledger/blocks');
       if (!blocksRes.ok) throw new Error('Failed to fetch blocks');
       const blocksData = await blocksRes.json();
@@ -26,10 +30,11 @@ function LedgerExplorer() {
 
       // Fetch chain verification status
       const verifyRes = await fetch('/api/ledger/verify-chain');
-      if (verifyRes.ok) {
-        const verifyData = await verifyRes.json();
-        setChainStatus(verifyData);
-      }
+      if (verifyRes.ok) setChainStatus(await verifyRes.json());
+
+      // US-39: Fetch consensus health
+      const chRes = await fetch('/api/ledger/consensus/health');
+      if (chRes.ok) setConsensusHealth(await chRes.json());
 
       setError(null);
       setLastUpdated(new Date().toLocaleTimeString());
@@ -37,6 +42,25 @@ function LedgerExplorer() {
       setError(err.message);
     }
     setLoading(false);
+  };
+
+  const lookupProof = async () => {
+    if (!proofInput.trim()) return;
+    setProofLoading(true);
+    setProofResult(null);
+    try {
+      const param = proofInput.length === 64 ? `entry_hash=${proofInput}` : `vote_id=${proofInput}`;
+      const res = await fetch(`/api/ledger/proof?${param}`);
+      if (!res.ok) {
+        const err = await res.json();
+        setProofResult({ error: err.detail || 'Not found' });
+      } else {
+        setProofResult(await res.json());
+      }
+    } catch (e) {
+      setProofResult({ error: e.message });
+    }
+    setProofLoading(false);
   };
 
   return (
@@ -79,9 +103,19 @@ function LedgerExplorer() {
           <div className="status-icon"></div>
           <div className="status-info">
             <span className="status-value">
-              {chainStatus?.valid ? 'Valid' : chainStatus?.reason || 'Pending'}
+              {chainStatus?.valid ? 'Valid' : chainStatus?.reason_code || 'Pending'}
             </span>
             <span className="status-label">Chain Integrity</span>
+          </div>
+        </div>
+        {/* US-39: Consensus Health */}
+        <div className={`status-card ${consensusHealth?.status === 'ok' ? 'valid' : 'warning'}`}>
+          <div className="status-icon"></div>
+          <div className="status-info">
+            <span className="status-value">
+              {consensusHealth ? consensusHealth.status.toUpperCase() : '—'}
+            </span>
+            <span className="status-label">Consensus</span>
           </div>
         </div>
       </div>
@@ -99,7 +133,6 @@ function LedgerExplorer() {
 
         {error && (
           <div className="error-state">
-
             <p>{error}</p>
             <span>Is the backend running?</span>
           </div>
@@ -154,6 +187,14 @@ function LedgerExplorer() {
                         {block.merkle_root?.substring(0, 16)}...
                       </code>
                     </div>
+                    {block.commit_cert_hash && (
+                      <div className="hash-row">
+                        <span className="hash-label">Commit Cert</span>
+                        <code className="hash-value" title={block.commit_cert_hash}>
+                          {block.commit_cert_hash?.substring(0, 16)}...
+                        </code>
+                      </div>
+                    )}
                   </div>
 
                   <div className="block-footer">
@@ -168,9 +209,42 @@ function LedgerExplorer() {
         )}
       </div>
 
-      {/* Info Card */}
+      {/* Merkle Proof Lookup */}
       <div className="info-card">
-        <div className="info-icon"></div>
+        <div className="info-content">
+          <h4>Merkle Inclusion Proof</h4>
+          <p>Enter a Vote ID or entry hash to verify inclusion in the chain.</p>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <input
+              type="text"
+              placeholder="Vote ID or entry hash..."
+              value={proofInput}
+              onChange={e => setProofInput(e.target.value)}
+              style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid #444', background: '#1a1a2e', color: '#eee' }}
+            />
+            <button className="btn btn-refresh" onClick={lookupProof} disabled={proofLoading}>
+              {proofLoading ? '...' : 'Verify'}
+            </button>
+          </div>
+          {proofResult && (
+            <div style={{ marginTop: '10px', padding: '8px', background: '#111', borderRadius: '6px' }}>
+              {proofResult.error ? (
+                <span style={{ color: '#f55' }}>{proofResult.error}</span>
+              ) : (
+                <>
+                  <div><b>Entry:</b> <code>{proofResult.entry_hash?.substring(0, 20)}...</code></div>
+                  <div><b>Root:</b> <code>{proofResult.merkle_root?.substring(0, 20)}...</code></div>
+                  <div><b>Valid:</b> <span style={{ color: proofResult.valid ? '#6f6' : '#f55' }}>{proofResult.valid ? '✓ Verified' : '✗ Invalid'}</span></div>
+                  <div><b>Proof steps:</b> {proofResult.proof?.length || 0}</div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* About card */}
+      <div className="info-card">
         <div className="info-content">
           <h4>About the Immutable Ledger</h4>
           <p>

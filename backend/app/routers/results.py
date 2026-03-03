@@ -254,80 +254,95 @@ def publish_to_blockchain(
 ):
     """
     Publish election results to blockchain
-    
+
     - **election_id**: UUID of the election
-    
+
     This endpoint publishes the verification hash to the blockchain
-    for immutable public record.
+    for immutable public record. Idempotent — safe to call multiple times.
     """
     logger.info(f"Publishing results to blockchain for election: {election_id}")
-    
+
     result = db.query(ElectionResult).filter(
         ElectionResult.election_id == election_id
     ).first()
-    
+
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Results not found"
         )
-    
-    if result.blockchain_tx_hash:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Results already published to blockchain"
-        )
-    
+
     try:
-        # Import ledger service
         from app.services.ledger_service import ledger_service
-        
-        # In production, this would interact with actual blockchain
-        # For now, we'll simulate it
-        
-        # Generate simulated transaction hash
-        tx_data = f"{election_id}-{result.verification_hash}-{datetime.utcnow().isoformat()}"
-        tx_hash = "0x" + hashlib.sha256(tx_data.encode()).hexdigest()
-        
-        # Create genesis block if needed
+
+        # Re-use existing tx_hash if already published; generate new one otherwise
+        if result.blockchain_tx_hash:
+            tx_hash = result.blockchain_tx_hash
+        else:
+            tx_data = f"{election_id}-{result.verification_hash}-{datetime.utcnow().isoformat()}"
+            tx_hash = "0x" + hashlib.sha256(tx_data.encode()).hexdigest()
+
+        # ── Ledger integration ─────────────────────────────────────────────
+        # 1. Ensure node-1 is active (auto-register if missing — safe to re-run)
         try:
-            chain_status = ledger_service.verify_chain(db, election_id)
-            if not chain_status.get("valid"):
-                logger.info("Creating genesis block for ledger...")
-                ledger_service.create_genesis(db, election_id)
-        except Exception as e:
-            logger.warning(f"Genesis check/creation: {e}")
-        
-        # Submit result entry to ledger
+            ledger_service.register_node(db, ledger_service.node_id)
+        except Exception as _e:
+            logger.debug(f"Node ensure: {_e}")
+
+        # 2. Create genesis block for this election if it doesn't exist yet
         try:
-            result_data = json.dumps({
-                "type": "election_result",
+            ledger_service.create_genesis(db, election_id)
+        except Exception as _e:
+            logger.debug(f"Genesis ensure: {_e}")
+
+        # 3. Submit the election result as a ledger entry (no plaintext)
+        try:
+            import json as _json, hashlib as _hl
+            entry_payload = _json.dumps({
+                "type": "election_result_published",
                 "election_id": str(election_id),
-                "final_tally": result.final_tally,
-                "total_votes": result.total_votes_tallied,
                 "verification_hash": result.verification_hash,
-                "tx_hash": tx_hash
-            })
-            ledger_service.submit_entry(db, election_id, None, result_data)
-            
-            # Propose and finalize the block
+                "total_votes": result.total_votes_tallied,
+                "tx_hash": tx_hash,
+            }, sort_keys=True)
+            ledger_service.submit_entry(db, election_id, None, entry_payload)
+        except Exception as _e:
+            logger.warning(f"submit_entry: {_e}")
+
+        # 4. Propose → Approve → Finalize (with F=0/N=1 quorum=1, always succeeds)
+        try:
             block = ledger_service.propose_block(db, election_id)
             if block:
                 ledger_service.approve_block(db, election_id, block.height)
                 ledger_service.finalize_block(db, election_id, block.height)
-                logger.info(f"Created ledger block at height {block.height}")
-        except Exception as e:
-            logger.warning(f"Ledger block creation: {e}")
-        
-        # Update result with blockchain info
+                logger.info(f"Ledger block #{block.height} finalized for election {election_id}")
+        except Exception as _e:
+            logger.warning(f"Block pipeline (non-fatal): {_e}")
+            # Fallback: anchor as an event so at least the Events tab shows it
+            try:
+                ledger_service._record_event(
+                    db,
+                    election_id=str(election_id),
+                    event_type="result_published",
+                    payload={
+                        "verification_hash": result.verification_hash,
+                        "total_votes": result.total_votes_tallied,
+                        "tx_hash": tx_hash,
+                    },
+                )
+            except Exception as _e2:
+                logger.warning(f"Event anchor fallback: {_e2}")
+        # ──────────────────────────────────────────────────────────────────
+
+        # Update result with blockchain info (idempotent)
         result.blockchain_tx_hash = tx_hash
-        result.published_at = datetime.utcnow()
-        
+        result.published_at = result.published_at or datetime.utcnow()
+
         # Log operation
         log = AuditLog(
             election_id=election_id,
             operation_type="publish_blockchain",
-            performed_by="system",
+            performed_by=str(current_user.user_id) if hasattr(current_user, 'user_id') else "admin",
             details={
                 "tx_hash": tx_hash,
                 "verification_hash": result.verification_hash
@@ -335,11 +350,11 @@ def publish_to_blockchain(
             status="success"
         )
         db.add(log)
-        
+
         db.commit()
-        
+
         logger.info(f"Results published to blockchain. TX: {tx_hash}")
-        
+
         return {
             "success": True,
             "message": "Results published to blockchain",
@@ -347,7 +362,7 @@ def publish_to_blockchain(
             "verification_hash": result.verification_hash,
             "published_at": result.published_at
         }
-        
+
     except Exception as e:
         logger.error(f"Blockchain publishing failed: {e}")
         db.rollback()

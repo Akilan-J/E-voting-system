@@ -459,15 +459,25 @@ class TallyingService:
             total_votes
         )
         
-        # Store results
-        result = ElectionResult(
-            election_id=election_id,
-            final_tally=final_tally,
-            total_votes_tallied=total_votes,
-            verification_hash=verification_hash,
-            is_verified=True
-        )
-        db.add(result)
+        # Store results — UPSERT to avoid UniqueViolation on re-finalize
+        result = db.query(ElectionResult).filter(
+            ElectionResult.election_id == election_id
+        ).first()
+        if result:
+            # Update existing record
+            result.final_tally = final_tally
+            result.total_votes_tallied = total_votes
+            result.verification_hash = verification_hash
+            result.is_verified = True
+        else:
+            result = ElectionResult(
+                election_id=election_id,
+                final_tally=final_tally,
+                total_votes_tallied=total_votes,
+                verification_hash=verification_hash,
+                is_verified=True
+            )
+            db.add(result)
         
         # Update session and election
         session.status = "completed"

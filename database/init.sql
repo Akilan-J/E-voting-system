@@ -174,3 +174,114 @@ COMMENT ON TABLE audit_logs IS 'Immutable audit trail of all tallying operations
 COMMENT ON TABLE verification_proofs IS 'Zero-knowledge proofs for result verification';
 COMMENT ON TABLE tallying_sessions IS 'Tracks the state of ongoing tallying processes';
 
+-- =========================================================
+-- EPIC 3: Immutable Vote Ledger Tables
+-- All tables use IF NOT EXISTS for safe re-runs
+-- =========================================================
+
+-- BFT consensus nodes participating in the ledger network
+CREATE TABLE IF NOT EXISTS ledger_nodes (
+    node_id VARCHAR(255) PRIMARY KEY,
+    public_key TEXT NOT NULL DEFAULT '',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen TIMESTAMP,
+    last_height INTEGER DEFAULT 0
+);
+
+-- Blockchain blocks - each contains multiple vote entries
+CREATE TABLE IF NOT EXISTS ledger_blocks (
+    id SERIAL PRIMARY KEY,
+    election_id UUID,
+    height INTEGER NOT NULL,
+    prev_hash TEXT NOT NULL,
+    merkle_root TEXT NOT NULL,
+    block_hash TEXT UNIQUE NOT NULL,
+    entry_count INTEGER DEFAULT 0,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    commit_cert_hash TEXT,
+    committed BOOLEAN DEFAULT FALSE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_election_height ON ledger_blocks(election_id, height);
+
+-- Individual vote entries in the ledger (Merkle tree leaves)
+CREATE TABLE IF NOT EXISTS ledger_entries (
+    id SERIAL PRIMARY KEY,
+    election_id UUID,
+    vote_id UUID,
+    entry_hash TEXT NOT NULL,
+    ciphertext_hash TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    block_height INTEGER,
+    leaf_index INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_entry_hash ON ledger_entries(entry_hash);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_block_height ON ledger_entries(block_height);
+
+-- BFT node approvals for blocks (signatures for quorum)
+CREATE TABLE IF NOT EXISTS ledger_approvals (
+    id SERIAL PRIMARY KEY,
+    election_id UUID,
+    height INTEGER NOT NULL,
+    block_hash TEXT NOT NULL,
+    node_id VARCHAR(255) NOT NULL,
+    signature TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_election_height_node ON ledger_approvals(election_id, height, node_id);
+
+-- Ledger state snapshots for efficient recovery
+CREATE TABLE IF NOT EXISTS ledger_snapshots (
+    id SERIAL PRIMARY KEY,
+    election_id UUID,
+    height INTEGER NOT NULL,
+    tip_hash TEXT NOT NULL,
+    snapshot_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    signed_by_node_id VARCHAR(255),
+    signature TEXT
+);
+
+-- Audit trail of ledger operations
+CREATE TABLE IF NOT EXISTS ledger_events (
+    id SERIAL PRIMARY KEY,
+    election_id UUID,
+    event_type VARCHAR(100) NOT NULL,
+    payload_hash TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    anchored_block_height INTEGER
+);
+
+-- Records of data pruning operations (removes old ciphertext)
+CREATE TABLE IF NOT EXISTS ledger_pruning (
+    id SERIAL PRIMARY KEY,
+    election_id UUID,
+    pruned_before_height INTEGER NOT NULL,
+    policy TEXT NOT NULL,
+    event_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default node for local development
+INSERT INTO ledger_nodes (node_id, public_key, is_active)
+    VALUES ('node-1', 'simulated_public_key_node-1', TRUE)
+    ON CONFLICT (node_id) DO NOTHING;
+
+GRANT ALL PRIVILEGES ON TABLE ledger_nodes TO admin;
+GRANT ALL PRIVILEGES ON TABLE ledger_blocks TO admin;
+GRANT ALL PRIVILEGES ON TABLE ledger_entries TO admin;
+GRANT ALL PRIVILEGES ON TABLE ledger_approvals TO admin;
+GRANT ALL PRIVILEGES ON TABLE ledger_snapshots TO admin;
+GRANT ALL PRIVILEGES ON TABLE ledger_events TO admin;
+GRANT ALL PRIVILEGES ON TABLE ledger_pruning TO admin;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO admin;
+
+COMMENT ON TABLE ledger_nodes IS 'EPIC 3: BFT consensus nodes permitted to write to the ledger';
+COMMENT ON TABLE ledger_blocks IS 'EPIC 3: Immutable blockchain blocks linked by hash chain';
+COMMENT ON TABLE ledger_entries IS 'EPIC 3: Vote entry hashes (no plaintext) forming Merkle tree leaves';
+COMMENT ON TABLE ledger_approvals IS 'EPIC 3: BFT node approval signatures for quorum verification';
+COMMENT ON TABLE ledger_snapshots IS 'EPIC 3: Periodic chain snapshots for efficient catch-up';
+COMMENT ON TABLE ledger_events IS 'EPIC 3: Audit trail of all ledger operations';
+COMMENT ON TABLE ledger_pruning IS 'EPIC 3: Records of payload pruning (preserves hashes)';
+
+
