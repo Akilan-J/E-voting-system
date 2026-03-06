@@ -274,15 +274,26 @@ async def merkle_proof(
     election_id: Optional[uuid.UUID] = None,
     vote_id: Optional[uuid.UUID] = None,
     entry_hash: Optional[str] = None,
+    receipt_hash: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    """Merkle inclusion proof for a vote entry. No ciphertext exposed."""
+    """Merkle inclusion proof for a vote entry. Accepts vote_id, entry_hash, or receipt_hash."""
+    # If receipt_hash provided, resolve it to a vote_id first
+    if receipt_hash and not vote_id and not entry_hash:
+        from app.models.database import EncryptedVote
+        vote = db.query(EncryptedVote).filter(
+            EncryptedVote.receipt_hash == receipt_hash
+        ).first()
+        if not vote:
+            raise HTTPException(status_code=404, detail="Receipt hash not found")
+        vote_id = vote.vote_id
+
     if not vote_id and not entry_hash:
-        raise HTTPException(status_code=400, detail="Provide vote_id or entry_hash")
+        raise HTTPException(status_code=400, detail="Provide vote_id, entry_hash, or receipt_hash")
+
     result = ledger_service.get_merkle_proof(db, election_id, vote_id=vote_id, entry_hash=entry_hash)
     if not result:
         raise HTTPException(status_code=404, detail="Entry not found or not yet committed")
-    # Verify the proof
     is_valid = ledger_service.verify_merkle_proof(
         result["entry_hash"], result["proof"], result["merkle_root"]
     )

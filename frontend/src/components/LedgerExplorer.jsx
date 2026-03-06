@@ -49,8 +49,14 @@ function LedgerExplorer() {
     setProofLoading(true);
     setProofResult(null);
     try {
-      const param = proofInput.length === 64 ? `entry_hash=${proofInput}` : `vote_id=${proofInput}`;
-      const res = await fetch(`/api/ledger/proof?${param}`);
+      const input = proofInput.trim();
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input);
+      const param = isUUID ? `vote_id=${input}` : `entry_hash=${input}`;
+      let res = await fetch(`/api/ledger/proof?${param}`);
+      // Fallback: if entry_hash not found, try receipt_hash (same 64-char hex format)
+      if (!res.ok && !isUUID) {
+        res = await fetch(`/api/ledger/proof?receipt_hash=${input}`);
+      }
       if (!res.ok) {
         const err = await res.json();
         setProofResult({ error: err.detail || 'Not found' });

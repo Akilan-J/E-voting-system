@@ -324,8 +324,10 @@ class LedgerService:
         US: Merkle inclusion proof.
         Returns {entry_hash, merkle_root, proof, block_height} or None.
         """
-        # Find the entry
-        q = db.query(LedgerEntry).filter(LedgerEntry.election_id == election_id)
+        # Find the entry — only filter by election_id if it's actually provided
+        q = db.query(LedgerEntry)
+        if election_id is not None:
+            q = q.filter(LedgerEntry.election_id == election_id)
         if vote_id:
             q = q.filter(LedgerEntry.vote_id == vote_id)
         elif entry_hash:
@@ -337,16 +339,20 @@ class LedgerService:
         if not entry or entry.block_height is None:
             return None
 
-        # Get all entries in the same block
-        siblings = db.query(LedgerEntry).filter(
-            LedgerEntry.election_id == election_id,
+        # Get all entries in the same block (use same election scope if known)
+        sibling_q = db.query(LedgerEntry).filter(
             LedgerEntry.block_height == entry.block_height
-        ).all()
+        )
+        if entry.election_id is not None:
+            sibling_q = sibling_q.filter(LedgerEntry.election_id == entry.election_id)
+        siblings = sibling_q.all()
 
-        block = db.query(LedgerBlock).filter(
-            LedgerBlock.election_id == election_id,
+        block_q = db.query(LedgerBlock).filter(
             LedgerBlock.height == entry.block_height
-        ).first()
+        )
+        if entry.election_id is not None:
+            block_q = block_q.filter(LedgerBlock.election_id == entry.election_id)
+        block = block_q.first()
 
         proof_steps = self._compute_merkle_proof(entry.entry_hash, siblings)
         return {
