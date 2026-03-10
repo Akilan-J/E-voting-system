@@ -5,6 +5,17 @@ import uuid
 
 client = TestClient(app)
 
+
+def _get_admin_token():
+    r = client.post("/auth/login", json={"credential": "admin"})
+    assert r.status_code == 200
+    return r.json()["access_token"]
+
+
+def _admin_headers():
+    return {"Authorization": f"Bearer {_get_admin_token()}"}
+
+
 # US-66: Evidence Package
 def test_evidence_download():
     election_id = "00000000-0000-0000-0000-000000000001"
@@ -23,7 +34,7 @@ def test_threat_simulation():
     response = client.post("/api/security/simulate", json={
         "scenario_type": "replay_attack",
         "intensity": "low"
-    }, headers={"X-User-Role": "admin"})
+    }, headers=_admin_headers())
     
     assert response.status_code == 200
     data = response.json()
@@ -32,12 +43,13 @@ def test_threat_simulation():
 
 # US-70: Incident Response
 def test_incident_workflow():
+    headers = _admin_headers()
     # 1. Create Incident
     response = client.post("/api/ops/incidents", json={
         "title": "Test Incident",
         "description": "Automated test",
         "severity": "low"
-    }, headers={"X-User-Role": "admin"})
+    }, headers=headers)
     
     assert response.status_code == 200
     incident = response.json()
@@ -45,13 +57,13 @@ def test_incident_workflow():
     
     # 2. Update Status
     update_response = client.put(f"/api/ops/incidents/{incident_id}", json={
-        "status": "investigating",
+        "status": "triage",
         "resolution_notes": "Bot checked"
-    }, headers={"X-User-Role": "admin"})
+    }, headers=headers)
     
     assert update_response.status_code == 200
     updated = update_response.json()
-    assert updated["status"] == "investigating"
+    assert updated["status"] == "triage"
 
 # US-73: Anomaly Detection
 def test_anomaly_detection():

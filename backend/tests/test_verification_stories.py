@@ -57,7 +57,16 @@ def test_zk_proof_verification():
     finally:
         db.close()
 
-    proof_bundle = {"a": [1, 2], "b": [[3, 4], [5, 6]], "c": [7, 8]}
+    import hashlib as _hashlib
+    merkle_root = "0" * 64  # no ledger entries, so root is all zeros
+    proof_bundle = {
+        "election_id": election_id,
+        "verification_hash": "hash123",
+        "ledger_root": merkle_root,
+        "proof_hash": _hashlib.sha256(
+            f"{election_id}|hash123|{merkle_root}".encode()
+        ).hexdigest(),
+    }
     
     response = client.post("/api/verify/zk-proof", json={
         "election_id": election_id,

@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
+import os
 import time
 from datetime import datetime, timedelta
 # Monkeypatch time.clock for passlib compatibility on Python 3.8+
@@ -159,9 +160,17 @@ app = FastAPI(
 )
 
 # CORS middleware
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
+allowed_origins = [
+    "http://localhost:3000",
+    "http://frontend:3000",
+]
+if FRONTEND_URL:
+    allowed_origins.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

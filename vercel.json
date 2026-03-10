@@ -3,12 +3,24 @@
   "outputDirectory": "frontend/build",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/:path*",
+      "destination": "https://e-voting-backend.onrender.com/api/:path*"
     },
     {
-      "source": "/auth/(.*)",
-      "destination": "/auth/$1"
+      "source": "/auth/:path*",
+      "destination": "https://e-voting-backend.onrender.com/auth/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://e-voting-backend.onrender.com/health"
+    },
+    {
+      "source": "/docs",
+      "destination": "https://e-voting-backend.onrender.com/docs"
+    },
+    {
+      "source": "/openapi.json",
+      "destination": "https://e-voting-backend.onrender.com/openapi.json"
     },
     {
       "source": "/(.*)",

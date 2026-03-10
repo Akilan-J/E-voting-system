@@ -1,0 +1,45 @@
+databases:
+  - name: evoting-db
+    databaseName: evoting_db
+    user: evoting
+    plan: free
+
+services:
+  - type: web
+    name: e-voting-backend
+    runtime: python
+    plan: free
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: evoting-db
+          property: connectionString
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: evoting-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: evoting-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: evoting-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: evoting-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: evoting-db
+          property: password
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: FRONTEND_URL
+        value: https://e-voting-system-cyan.vercel.app
