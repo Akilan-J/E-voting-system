@@ -4,23 +4,23 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://e-voting-backend.onrender.com/api/:path*"
+      "destination": "https://e-voting-backend-q8x9.onrender.com/api/:path*"
     },
     {
       "source": "/auth/:path*",
-      "destination": "https://e-voting-backend.onrender.com/auth/:path*"
+      "destination": "https://e-voting-backend-q8x9.onrender.com/auth/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://e-voting-backend.onrender.com/health"
+      "destination": "https://e-voting-backend-q8x9.onrender.com/health"
     },
     {
       "source": "/docs",
-      "destination": "https://e-voting-backend.onrender.com/docs"
+      "destination": "https://e-voting-backend-q8x9.onrender.com/docs"
     },
     {
       "source": "/openapi.json",
-      "destination": "https://e-voting-backend.onrender.com/openapi.json"
+      "destination": "https://e-voting-backend-q8x9.onrender.com/openapi.json"
     },
     {
       "source": "/(.*)",
