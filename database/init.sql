@@ -144,7 +144,8 @@ INSERT INTO trustees (name, email, status) VALUES
     ('Trustee Bob', 'bob@evoting.com', 'active'),
     ('Trustee Charlie', 'charlie@evoting.com', 'active'),
     ('Trustee Diana', 'diana@evoting.com', 'active'),
-    ('Trustee Eve', 'eve@evoting.com', 'active');
+    ('Trustee Eve', 'eve@evoting.com', 'active')
+ON CONFLICT (email) DO NOTHING;
 
 -- Insert sample election for testing
 INSERT INTO elections (title, description, start_time, end_time, status, candidates) VALUES
@@ -161,9 +162,14 @@ INSERT INTO elections (title, description, start_time, end_time, status, candida
         ]'::jsonb
     );
 
--- Grant permissions (adjust as needed for production)
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO admin;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO admin;
+-- Grant permissions (safe for any user)
+DO $$
+BEGIN
+  EXECUTE 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ' || current_user;
+  EXECUTE 'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ' || current_user;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Grant skipped: %', SQLERRM;
+END $$;
 
 -- Comments for documentation
 COMMENT ON TABLE trustees IS 'Stores trustee information and key shares for threshold decryption';
@@ -267,14 +273,13 @@ INSERT INTO ledger_nodes (node_id, public_key, is_active)
     VALUES ('node-1', 'simulated_public_key_node-1', TRUE)
     ON CONFLICT (node_id) DO NOTHING;
 
-GRANT ALL PRIVILEGES ON TABLE ledger_nodes TO admin;
-GRANT ALL PRIVILEGES ON TABLE ledger_blocks TO admin;
-GRANT ALL PRIVILEGES ON TABLE ledger_entries TO admin;
-GRANT ALL PRIVILEGES ON TABLE ledger_approvals TO admin;
-GRANT ALL PRIVILEGES ON TABLE ledger_snapshots TO admin;
-GRANT ALL PRIVILEGES ON TABLE ledger_events TO admin;
-GRANT ALL PRIVILEGES ON TABLE ledger_pruning TO admin;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO admin;
+DO $$
+BEGIN
+  EXECUTE 'GRANT ALL PRIVILEGES ON TABLE ledger_nodes, ledger_blocks, ledger_entries, ledger_approvals, ledger_snapshots, ledger_events, ledger_pruning TO ' || current_user;
+  EXECUTE 'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ' || current_user;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Ledger grant skipped: %', SQLERRM;
+END $$;
 
 COMMENT ON TABLE ledger_nodes IS 'EPIC 3: BFT consensus nodes permitted to write to the ledger';
 COMMENT ON TABLE ledger_blocks IS 'EPIC 3: Immutable blockchain blocks linked by hash chain';

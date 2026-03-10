@@ -1,0 +1,35 @@
+{
+  "election_id": "bcb8ae02-85c2-4341-bfad-4417effabfc3",
+  "controls": {
+    "audit_logging": {
+      "evidence": "audit_logs:0",
+      "status": "present"
+    },
+    "ledger_integrity": {
+      "evidence": {
+        "valid": true,
+        "blocks_verified": 0,
+        "first_failing_height": null,
+        "reason_code": null,
+        "message": "No committed blocks"
+      },
+      "status": "verified"
+    },
+    "result_verification": {
+      "evidence": null,
+      "status": "present"
+    },
+    "incident_tracking": {
+      "evidence": "incidents:23",
+      "status": "present"
+    },
+    "dispute_workflow": {
+      "evidence": "disputes:0",
+      "status": "present"
+    }
+  },
+  "missing_controls": [
+    "result_verification"
+  ],
+  "generated_at": "2026-03-10T14:08:28.837190"
+}

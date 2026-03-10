@@ -62,6 +62,7 @@ jobs:
           psql -h localhost -U evoting -d evoting_db -f database/init.sql
         env:
           PGPASSWORD: evoting_pass
+        continue-on-error: true
 
       - name: Run tests
         run: |

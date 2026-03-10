@@ -1,10 +1,23 @@
-"""Test all new EPIC 4 endpoints"""
+"""Test all new EPIC 4 endpoints — requires a running backend server.
+Skipped automatically in CI (no live server in backend-tests job).
+"""
 import requests
 import json
+import pytest
 
 BASE = "http://localhost:8000"
 ELECTION = "00000000-0000-0000-0000-000000000001"
 
+
+def _server_reachable():
+    try:
+        requests.get(f"{BASE}/health", timeout=2)
+        return True
+    except Exception:
+        return False
+
+
+@pytest.mark.skipif(not _server_reachable(), reason="Backend server not running at localhost:8000")
 def test():
     # Login as admin
     r = requests.post(f"{BASE}/auth/login", json={"credential": "admin", "password": "admin123"})
