@@ -1,7 +1,7 @@
 /* global BigInt */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Vote, Search, Lock, CheckCircle, Shield, User, Fingerprint, AlertCircle } from 'lucide-react';
+import { Vote, Search, Lock, CheckCircle, Shield, User } from 'lucide-react';
 import './VoterAccess.css';
 
 const VoterAccess = ({ authRole }) => {
