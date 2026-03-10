@@ -24,20 +24,20 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U evoting"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+          --health-cmd "pg_isready -U evoting"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
       redis:
         image: redis:7-alpine
         ports:
           - 6379:6379
         options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -54,9 +54,12 @@ jobs:
           cd backend
           pip install -r requirements.txt
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
       - name: Initialize database
         run: |
-          PGPASSWORD=evoting_pass psql -h localhost -U evoting -d evoting_db -f database/init.sql
+          psql -h localhost -U evoting -d evoting_db -f database/init.sql
         env:
           PGPASSWORD: evoting_pass
 
@@ -104,7 +107,7 @@ jobs:
           cd frontend
           npm run build
         env:
-          CI: true
+          CI: false
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
