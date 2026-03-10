@@ -30,6 +30,8 @@ jobs:
 
       - name: Build with Vercel
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          CI: false
 
       - name: Deploy to Vercel
         id: deploy
