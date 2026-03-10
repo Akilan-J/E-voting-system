@@ -1,6 +1,17 @@
 # OpenProject docs (internal only)
 docs/openproject_*.md
 
+# Excalidraw / Mermaid tooling
+node_modules/
+package.json
+package-lock.json
+convert_diagram.mjs
+*.excalidraw
+docs/architecture_diagram.excalidraw
+
+# Vercel
+.vercel/
+
 # Node.js / Frontend
 node_modules/
 npm-debug.log*
@@ -125,3 +136,5 @@ redis_data/
 
 # Dependencies cache
 .deps/
+.vercel
+.env*.local

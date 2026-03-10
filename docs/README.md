@@ -16,7 +16,9 @@ A privacy-preserving electronic voting platform that uses homomorphic encryption
 8. [Project Structure](#project-structure)
 9. [Testing](#testing)
 10. [Local Development](#local-development)
-11. [Troubleshooting](#troubleshooting)
+11. [Deployment (Vercel)](#deployment-vercel)
+12. [CI/CD (GitHub Actions)](#cicd-github-actions)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -192,9 +194,15 @@ Interactive Swagger documentation is available at http://localhost:8000/docs.
 ```
 E-voting-system/
   docker-compose.yml
+  vercel.json                      # Vercel deployment configuration
   pytest.ini
   start.ps1                        # PowerShell launcher
   reset_demo.ps1                   # Demo reset script
+
+  .github/
+    workflows/
+      ci.yml                       # CI: backend tests, frontend build, integration
+      deploy.yml                   # CD: Vercel production deploy
 
   frontend/
     src/
@@ -261,6 +269,7 @@ E-voting-system/
     verify_integration.py         # Integration verification helper
 
   docs/
+    DEPLOYMENT_REPORT.md          # Vercel deploy & CI/CD pipeline report
     EPIC3_README.md               # Ledger module documentation
     EPIC4_README.md               # Tallying and security architecture
     EPIC5_README.md               # Verification and audit ops
@@ -334,6 +343,54 @@ docker-compose up -d --build       # rebuild images
 
 ---
 
+## Deployment (Vercel)
+
+The React frontend is configured for deployment on **Vercel**.
+
+### Quick deploy
+```bash
+npm install -g vercel
+cd E-voting-system
+vercel link
+vercel --prod
+```
+
+Or connect the GitHub repository directly in the [Vercel dashboard](https://vercel.com/new) — it auto-detects `vercel.json` and deploys on every push.
+
+### Configuration
+- `vercel.json` at project root defines build command, output directory, SPA rewrites, and security headers
+- Build: `cd frontend && npm install && npm run build`
+- Output: `frontend/build`
+
+> **Note:** Vercel hosts the frontend SPA only. The backend (FastAPI + PostgreSQL + Redis + Ganache) must be deployed separately (Docker Compose, cloud VM, or container service).
+
+---
+
+## CI/CD (GitHub Actions)
+
+Two workflows run automatically on push/PR to `all` or `main`:
+
+### CI Pipeline (`.github/workflows/ci.yml`)
+| Job | What it does |
+|-----|-------------|
+| **backend-tests** | Runs 103 Python tests against PostgreSQL 15 + Redis 7 service containers |
+| **frontend-build** | Builds the React production bundle with Node 18 |
+| **integration** | Docker Compose smoke test — builds images, checks `/health`, verifies frontend |
+
+### CD Pipeline (`.github/workflows/deploy.yml`)
+Deploys the frontend to Vercel on every push to `all` or `main`.
+
+**Required GitHub Secrets:**
+| Secret | How to get it |
+|--------|--------------|
+| `VERCEL_TOKEN` | [Vercel → Settings → Tokens](https://vercel.com/account/tokens) |
+| `VERCEL_ORG_ID` | From `.vercel/project.json` after `vercel link` |
+| `VERCEL_PROJECT_ID` | From `.vercel/project.json` after `vercel link` |
+
+See [DEPLOYMENT_REPORT.md](DEPLOYMENT_REPORT.md) for full details.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -349,6 +406,8 @@ docker-compose up -d --build       # rebuild images
 
 ## Further Documentation
 
+- [DEPLOYMENT_REPORT.md](DEPLOYMENT_REPORT.md) — Vercel deployment, CI/CD pipeline, and deployment checklist
+- [VERCEL_SETUP_GUIDE.md](VERCEL_SETUP_GUIDE.md) — Step-by-step Vercel activation and GitHub Secrets setup
 - [EPIC3_README.md](EPIC3_README.md) — Immutable ledger: BFT consensus, Merkle proofs, chain verification
 - [EPIC4_README.md](EPIC4_README.md) — Cryptographic pipeline: Paillier, threshold decryption, blind signatures, security zones
 - [EPIC5_README.md](EPIC5_README.md) — Verification and audit: receipt verification, anomaly detection, incident response
