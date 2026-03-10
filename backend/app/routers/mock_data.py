@@ -4,6 +4,7 @@ Mock Data Router - Generate test data for development
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import uuid
 from uuid import UUID
 import logging
 import random
@@ -101,7 +102,7 @@ def generate_mock_votes(
             encrypted_vote = encryption_service.encrypt_vote(candidate_id, num_candidates)
             
             # Generate unique nonce
-            nonce = f"mock-{election.election_id}-{i}-{random.randint(1000, 9999)}"
+            nonce = f"mock-{election.election_id}-{i}-{uuid.uuid4().hex[:12]}"
             
             # Store encrypted vote
             vote = EncryptedVote(

@@ -20,3 +20,11 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     # Tables are left in place — CI containers are ephemeral
+
+
+@pytest.fixture(autouse=True)
+def clear_rate_limits():
+    """Clear the in-memory rate limiter before each test so 429s don't cascade."""
+    from app.utils.auth import rate_limit_store
+    rate_limit_store.clear()
+    yield

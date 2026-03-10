@@ -269,12 +269,13 @@ E-voting-system/
     verify_integration.py         # Integration verification helper
 
   docs/
-    DEPLOYMENT_REPORT.md          # Vercel deploy & CI/CD pipeline report
+    DEPLOYMENT_GUIDE.md           # Vercel + Render deployment guide
+    CI_CD_PIPELINE.md             # GitHub Actions CI/CD reference
     EPIC3_README.md               # Ledger module documentation
     EPIC4_README.md               # Tallying and security architecture
     EPIC5_README.md               # Verification and audit ops
-    TESTING_WORKFLOW.md           # Manual QA walkthrough
-    USAGE_GUIDE.md                # End-user usage guide
+    USAGE_GUIDE.md                # Usage guide + manual QA tests
+    USER_STORIES.md               # Full user stories (all epics)
     TEST_COVERAGE_REPORT.md       # Test suite breakdown
     MFA_CODE_GUIDE.md             # MFA setup instructions
 ```
@@ -387,7 +388,7 @@ Deploys the frontend to Vercel on every push to `all` or `main`.
 | `VERCEL_ORG_ID` | From `.vercel/project.json` after `vercel link` |
 | `VERCEL_PROJECT_ID` | From `.vercel/project.json` after `vercel link` |
 
-See [DEPLOYMENT_REPORT.md](DEPLOYMENT_REPORT.md) for full details.
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) and [CI_CD_PIPELINE.md](CI_CD_PIPELINE.md) for full details.
 
 ---
 
@@ -406,13 +407,13 @@ See [DEPLOYMENT_REPORT.md](DEPLOYMENT_REPORT.md) for full details.
 
 ## Further Documentation
 
-- [DEPLOYMENT_REPORT.md](DEPLOYMENT_REPORT.md) — Vercel deployment, CI/CD pipeline, and deployment checklist
-- [VERCEL_SETUP_GUIDE.md](VERCEL_SETUP_GUIDE.md) — Step-by-step Vercel activation and GitHub Secrets setup
+- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) — Vercel frontend + Render backend deployment
+- [CI_CD_PIPELINE.md](CI_CD_PIPELINE.md) — GitHub Actions CI/CD workflows and troubleshooting
 - [EPIC3_README.md](EPIC3_README.md) — Immutable ledger: BFT consensus, Merkle proofs, chain verification
 - [EPIC4_README.md](EPIC4_README.md) — Cryptographic pipeline: Paillier, threshold decryption, blind signatures, security zones
 - [EPIC5_README.md](EPIC5_README.md) — Verification and audit: receipt verification, anomaly detection, incident response
-- [TESTING_WORKFLOW.md](TESTING_WORKFLOW.md) — Manual QA steps for login, MFA, and voting flows
-- [USAGE_GUIDE.md](USAGE_GUIDE.md) — Step-by-step election walkthrough
+- [USAGE_GUIDE.md](USAGE_GUIDE.md) — Usage walkthrough + manual QA tests
+- [USER_STORIES.md](USER_STORIES.md) — Full user stories for all epics
 - [TEST_COVERAGE_REPORT.md](TEST_COVERAGE_REPORT.md) — Full test suite breakdown
 - [MFA_CODE_GUIDE.md](MFA_CODE_GUIDE.md) — How to get TOTP codes for MFA login
 
