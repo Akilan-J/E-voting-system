@@ -130,8 +130,10 @@ test-output/
 postgres_data/
 redis_data/
 
-# Artifacts (but keep structure)
-/artifacts/*.json
+# Artifacts — ignore all generated reports but keep directory structure
+/artifacts/**/*.json
+/artifacts/**/*.pub
+/artifacts/**/*.sig
 !/artifacts/.gitkeep
 
 # Dependencies cache
