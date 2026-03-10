@@ -53,12 +53,17 @@ def _write_signed_report(report: dict, subdir: str, prefix: str) -> dict:
     sig_path = target_dir / f"{base_name}.sig"
     pub_path = target_dir / f"{base_name}.pub"
 
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    sig_path.write_text(signature, encoding="utf-8")
-    pub_path.write_text(km.get_public_key_pem(), encoding="utf-8")
+    artifact_path = None
+    try:
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        sig_path.write_text(signature, encoding="utf-8")
+        pub_path.write_text(km.get_public_key_pem(), encoding="utf-8")
+        artifact_path = str(report_path.relative_to(target_dir.parents[1]))
+    except OSError:
+        artifact_path = f"{subdir}/{base_name}.json"
 
     return {
-        "artifact": str(report_path.relative_to(target_dir.parents[1])),
+        "artifact": artifact_path,
         "signature": signature,
         "public_key": km.get_public_key_pem(),
         "report_hash": digest

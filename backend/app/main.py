@@ -200,6 +200,13 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# slowapi rate-limiter state (required by ledger router)
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.routers.ledger import limiter
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Include Routers
 app.include_router(trustees.router, prefix="/api/trustees", tags=["trustees"])
 app.include_router(mock_data.router, prefix="/api/mock", tags=["mock"])
