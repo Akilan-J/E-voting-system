@@ -315,31 +315,61 @@ pytest tests/test_epic4.py -v
 
 ## Local Development
 
+### Start everything (Docker)
+```bash
+cd E-voting-system
+docker-compose up -d              # Start all services
+docker-compose ps                  # Verify running
+```
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend API docs | http://localhost:8000/docs |
+| Health check | http://localhost:8000/health |
+
 ### Frontend (without Docker)
 ```bash
 cd frontend
 npm install
-npm start
+npm start                          # Opens http://localhost:3000
 ```
 
 ### Backend (without Docker)
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
+```
+The backend expects a running PostgreSQL instance. Set `DATABASE_URL` in your environment.
+
+### Run tests
+```bash
+cd backend
+python -m pytest tests/ -v                    # All 119 tests
+python -m pytest tests/test_epic4.py -v       # Specific file
 ```
 
-The backend expects a running PostgreSQL instance. Connection parameters are read from environment variables (see `.env.example`).
+### Reset database
+```bash
+curl -X POST "http://localhost:8000/api/mock/reset-database?confirm=true"
+```
+Or click **Reset Database** in the Testing tab of the frontend.
 
 ### Common Docker commands
-
 ```bash
-docker-compose up -d              # start all services
-docker-compose down                # stop all services
-docker-compose down -v             # stop and delete volumes
-docker-compose logs -f             # stream logs
-docker-compose restart backend     # restart one service
-docker-compose up -d --build       # rebuild images
+docker-compose up -d              # Start all services
+docker-compose down                # Stop all services
+docker-compose down -v             # Stop + wipe database
+docker-compose logs -f             # Stream logs
+docker-compose restart backend     # Restart one service
+docker-compose up -d --build       # Rebuild images
+```
+
+### Git workflow
+```bash
+git add -A
+git commit -m "your message"
+git push origin main               # Triggers CI + Vercel deploy
 ```
 
 ---
@@ -369,7 +399,7 @@ Or connect the GitHub repository directly in the [Vercel dashboard](https://verc
 
 ## CI/CD (GitHub Actions)
 
-Two workflows run automatically on push/PR to `all` or `main`:
+Two workflows run automatically on push/PR to `main`:
 
 ### CI Pipeline (`.github/workflows/ci.yml`)
 | Job | What it does |
@@ -379,7 +409,7 @@ Two workflows run automatically on push/PR to `all` or `main`:
 | **integration** | Docker Compose smoke test — builds images, checks `/health`, verifies frontend |
 
 ### CD Pipeline (`.github/workflows/deploy.yml`)
-Deploys the frontend to Vercel on every push to `all` or `main`.
+Deploys the frontend to Vercel on every push to `main`.
 
 **Required GitHub Secrets:**
 | Secret | How to get it |
