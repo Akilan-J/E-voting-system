@@ -84,10 +84,10 @@ def list_trustees(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "trustee", "auditor", "security_engineer", "voter"]))
 ):
     """
-    List all registered trustees
+    List all registered trustees (public, no auth required).
+    Trustee names and status are non-sensitive display data.
     
     - **skip**: Number of records to skip
     - **limit**: Maximum number of records to return
