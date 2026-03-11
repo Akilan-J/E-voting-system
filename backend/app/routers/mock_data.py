@@ -397,15 +397,24 @@ def setup_test_trustees(
             detail="No election found. Initialize database first."
         )
     
-    # Get all trustees
+    # Get all trustees — create them if they don't exist (handles deployments without init.sql seed data)
     trustees = db.query(Trustee).all()
     
     if len(trustees) < 5:
-        return {
-            "success": False,
-            "message": "Not enough trustees. Run database initialization first.",
-            "trustees_found": len(trustees)
-        }
+        default_trustees = [
+            ("Trustee Alice", "alice@evoting.com"),
+            ("Trustee Bob", "bob@evoting.com"),
+            ("Trustee Charlie", "charlie@evoting.com"),
+            ("Trustee Diana", "diana@evoting.com"),
+            ("Trustee Eve", "eve@evoting.com"),
+        ]
+        for name, email in default_trustees:
+            existing = db.query(Trustee).filter(Trustee.email == email).first()
+            if not existing:
+                db.add(Trustee(name=name, email=email, status="active"))
+        db.commit()
+        trustees = db.query(Trustee).all()
+        logger.info(f"Created default trustees. Total now: {len(trustees)}")
     
     # Generate keypair for election if not exists
     if not election.encryption_params:
@@ -425,15 +434,13 @@ def setup_test_trustees(
     from app.services import threshold_crypto_service
     shares = threshold_crypto_service.split_secret(private_key)
     
-    for trustee in trustees[:5]:  # Only first 5
+    for idx, trustee in enumerate(trustees[:5]):  # Only first 5
         try:
-            # Find matching share for this trustee
-            for share in shares:
-                if share["trustee_index"] == trustee.id:
-                    trustee.public_key = public_key
-                    trustee.key_share_encrypted = share["share_data"]
-                    trustees_updated += 1
-                    break
+            # Assign share by position (not by DB id) to handle dynamic trustee creation
+            if idx < len(shares):
+                trustee.public_key = public_key
+                trustee.key_share_encrypted = shares[idx]["share_data"]
+                trustees_updated += 1
         except Exception as e:
             logger.error(f"Failed to setup trustee {trustee.id}: {e}")
     

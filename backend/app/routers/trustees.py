@@ -84,7 +84,7 @@ def list_trustees(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles(["admin", "trustee", "auditor", "security_engineer"]))
+    current_user: User = Depends(require_roles(["admin", "trustee", "auditor", "security_engineer", "voter"]))
 ):
     """
     List all registered trustees
